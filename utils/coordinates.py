@@ -70,7 +70,7 @@ class CoordinatesTransform:
         theta = math.atan2(lat, lng) + 0.000003 * math.cos(lng * self.x_pi)
         bd_lng = z * math.cos(theta) + 0.0065
         bd_lat = z * math.sin(theta) + 0.006
-        return (bd_lng, bd_lat)
+        return bd_lng, bd_lat
 
     # BD09转GCJ02（百度坐标系转火星坐标系）
     def bd09_to_gcj02(self, lng, lat):
@@ -80,7 +80,7 @@ class CoordinatesTransform:
         theta = math.atan2(y, x) - 0.000003 * math.cos(x * self.x_pi)
         gcj_lng = z * math.cos(theta)
         gcj_lat = z * math.sin(theta)
-        return (gcj_lng, gcj_lat)
+        return gcj_lng, gcj_lat
 
     # WGS84转BD09（GPS转百度坐标系）
     def wgs84_to_bd09(self, lng, lat):
@@ -91,6 +91,27 @@ class CoordinatesTransform:
     def bd09_to_wgs84(self, lng, lat):
         gcj02 = self.bd09_to_gcj02(lng, lat)
         return self.gcj02_to_wgs84(gcj02[0], gcj02[1])
+
+    def coord_transform(self, coord, from_coord_type, to_coord_type):
+        coord_list = [list(map(float, coord.split(','))) for coord in coord.split(';')]
+        result_list = coord_list
+        if 'gcj02' == from_coord_type:
+            if 'wgs84' == to_coord_type:
+                result_list = [list(self.gcj02_to_wgs84(*coord)) for coord in coord_list]
+            if 'bdo9ll' == to_coord_type:
+                result_list = [list(self.gcj02_to_bd09(*coord)) for coord in coord_list]
+        elif 'wgs84' == from_coord_type:
+            if 'gcj02' == to_coord_type:
+                result_list = [list(self.wgs84_to_gcj02(*coord)) for coord in coord_list]
+            if 'bdo9ll' == to_coord_type:
+                result_list = [list(self.wgs84_to_bd09(*coord)) for coord in coord_list]
+        else:
+            if 'wgs84' == to_coord_type:
+                result_list = [list(self.bd09_to_wgs84(*coord)) for coord in coord_list]
+            if 'gcj02' == to_coord_type:
+                result_list = [list(self.bd09_to_gcj02(*coord)) for coord in coord_list]
+
+        return result_list
 
 
 if __name__ == '__main__':
