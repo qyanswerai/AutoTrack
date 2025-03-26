@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
-    path = r'data/raw_data'
-    # save_path = ""
+    # path = r'data/raw_data'
+    save_path = r"data/result_data"
 
     # 起点、终点、中间点的形式符合高德驾车路径规划API的要求
     origin = "116.481028,39.989643"
@@ -39,7 +39,9 @@ if __name__ == '__main__':
               "method_type": "ors",
               "coord_type": "bd09ll",
               "other_params": other_params,
-              "logger": logger
+              "logger": logger,
+              "save_path": save_path,
+              "result_type": "json"
               }
 
     try:

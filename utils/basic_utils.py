@@ -1,24 +1,27 @@
 import math
 import os
 import json
-import pandas as pd
 import geojson
+import time
 
 
 def pd_to_geojson(data, data_info):
-    if data is None:
-        return None
-
     # 保存轨迹、起始点
     feature_list = []
 
     # 确定起点、终点信息（根据起止轨迹点确定）
     start_point = data[["lng", "lat", "timestamp"]].iloc[0].to_dict()
     end_point = data[["lng", "lat", "timestamp"]].iloc[-1].to_dict()
-    start_time = data_info["start_time"]
-    end_time = data_info["end_time"]
+    # Object of type int64 is not JSON serializable，因此转换为str
+    start_time = str(data["timestamp"].iloc[0])
+    end_time = str(data["timestamp"].iloc[-1])
     start_point["timestamp"] = start_time
     end_point["timestamp"] = end_time
+
+    data_info["start_point"] = start_point
+    data_info["end_point"] = end_point
+    data_info["start_time"] = start_time
+    data_info["end_time"] = end_time
 
     sp = geojson.Feature(
         geometry=geojson.Point(tuple(data[["lng", "lat"]].iloc[0])),
@@ -46,7 +49,7 @@ def pd_to_geojson(data, data_info):
                   "speeds": data["speed"].values.tolist(),
                   "directions": data["direction"].values.tolist()}
 
-    coordinates = data[["lng","lat"]].values.tolist()
+    coordinates = data[["lng", "lat"]].values.tolist()
     line = geojson.Feature(
         geometry=geojson.LineString(coordinates),
         properties=properties)
@@ -57,16 +60,21 @@ def pd_to_geojson(data, data_info):
     return feature_collection
 
 
-def save_data(data, data_info=None, save_path="", file_name="default_name"):
+def save_data(data, data_info=None, save_path="", file_name="", save_type="csv"):
     # 是否保存处理后的轨迹
     if data is not None and save_path != "":
-        if file_name == "default_name":
-            file_name = '_'.join([data_info["task_id"], data_info["start_center_name"],
-                                  data_info["end_center_name"], data_info["plate_num"]]) + '.json'
-        path = os.path.join(save_path, file_name)
-        with open(path, 'w', encoding='utf-8') as f:
-            # 使用json.dump()方法将feature_collection对象写入文件
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        if file_name == "":
+            file_path = os.path.join(save_path, str(int(time.time())) + '.' + save_type)
+        else:
+            file_path = os.path.join(save_path, file_name + '.' + save_type)
+
+        if save_type == "json":
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json_data = pd_to_geojson(data, data_info)
+                # 使用json.dump()方法将feature_collection对象写入文件
+                json.dump(json_data, f, ensure_ascii=False, indent=4)
+        else:
+            data.to_csv(file_path, index=False)
 
 
 def cal_haversine_dis(cur_point, next_point):

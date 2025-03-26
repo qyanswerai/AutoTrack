@@ -8,6 +8,7 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Point, LineString
 from utils.coordinates import CoordinatesTransform
 from utils.config_parse import get_api_key
+from utils.basic_utils import save_data
 from traj_acquisition.traj_info_perfection import DrivingStateSimulate
 
 
@@ -44,6 +45,8 @@ class TrajAcquisition:
 
         self.coordinates = None
         self.result_data = None
+
+        self.data_info = {"origin": self.raw_origin, "destination": self.raw_destination, "way_points": self.raw_way_points}
 
         self.alternative_methods = ["amap", "baidu", "ors"]
 
@@ -320,9 +323,12 @@ class TrajAcquisition:
 
         # 获取timestamp、speed、direction
         driving_state_simulate = DrivingStateSimulate(self.result_data)
-        driving_state_simulate.process()
+        self.result_data = driving_state_simulate.process()
 
         # 保存轨迹信息（保存为pd、geojson文件）
+        self.data_info["method_type"] = self.method_type
+        self.data_info["coord_type"] = self.coord_type
+        save_data(self.result_data, self.data_info, self.save_path, self.save_name, self.result_type)
 
 
 if __name__ == '__main__':
@@ -336,7 +342,7 @@ if __name__ == '__main__':
               # "way_points": way_points,
               "method_type": "amap",
               # "coord_type": "bd09ll",
-              "other_params": other_params
+              "other_params": other_params,
               }
     try:
         TrajAcquisitionItem(**inputs)

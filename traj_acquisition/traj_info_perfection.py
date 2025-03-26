@@ -111,10 +111,8 @@ class DrivingStateSimulate:
             # 单位ms
             timestamp_list[i] = timestamp_list[i - 1] + delta_time * 1000
 
-        # for t in timestamp_list:
-        #     print(int(t))
-
         self.traj_data['timestamp'] = timestamp_list
+        # 指定为int64而不是int，避免超出范围
         self.traj_data['timestamp'] = self.traj_data['timestamp'].astype('int64')
         self.traj_data.drop(columns='distance', inplace=True)
 
