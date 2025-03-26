@@ -1,7 +1,7 @@
 import os
 import json
-from pydantic import BaseModel, ValidationError
-from traj_acquisition.traj_acquisition import TrajAcquisition
+from pydantic import ValidationError
+from traj_acquisition.traj_acquisition import TrajAcquisitionItem, TrajAcquisition
 
 import logging
 log_dir = './logs'
@@ -22,17 +22,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class TrajAcquisitionItem(BaseModel):
-    # 对于base_data、raw_data，仅校验其是否存在，后续在TrajectoryCompare初始化时根据data_type进行字段校验
-    origin: str
-    destination: str
-    way_points: str = ""
-    method_type: str = "amap"
-    coord_type: str = "gcj02"
-    other_params: dict = None
-    save_path: str = ""
-
-
 if __name__ == '__main__':
     path = r'data/raw_data'
     # save_path = ""
@@ -41,18 +30,21 @@ if __name__ == '__main__':
     origin = "116.481028,39.989643"
     destination = "116.434446,39.90816"
     way_points = "116.461028,39.959643;116.441028,39.929643"
-    other_params = {"show_fields": "polyline"}
-    params = {"origin": origin,
-              # "destination": destination,
+    other_params = {"show_fields": "polyline",
+                    "profile": "driving-hgv",
+                    "format": "geojson"}
+    inputs = {"origin": origin,
+              "destination": destination,
               # "way_points": way_points,
               "method_type": "ors",
               "coord_type": "bd09ll",
-              "other_params": other_params
+              "other_params": other_params,
+              "logger": logger
               }
 
     try:
-        TrajAcquisitionItem(**params)
-        traj_acquisition = TrajAcquisition(**params)
+        TrajAcquisitionItem(**inputs)
+        traj_acquisition = TrajAcquisition(**inputs)
         traj_acquisition.process()
     except ValidationError as e:
         print(e)

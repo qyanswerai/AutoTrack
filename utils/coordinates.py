@@ -92,18 +92,21 @@ class CoordinatesTransform:
         gcj02 = self.bd09_to_gcj02(lng, lat)
         return self.gcj02_to_wgs84(gcj02[0], gcj02[1])
 
-    def coord_transform(self, coord, from_coord_type, to_coord_type):
-        coord_list = [list(map(float, coord.split(','))) for coord in coord.split(';')]
+    def coord_transform(self, coord, from_coord_type, to_coord_type, coord_type='str'):
+        if coord_type == 'str':
+            coord_list = [list(map(float, coord.split(','))) for coord in coord.split(';')]
+        else:
+            coord_list = coord
         result_list = coord_list
         if 'gcj02' == from_coord_type:
             if 'wgs84' == to_coord_type:
                 result_list = [list(self.gcj02_to_wgs84(*coord)) for coord in coord_list]
-            if 'bdo9ll' == to_coord_type:
+            if 'bd09ll' == to_coord_type:
                 result_list = [list(self.gcj02_to_bd09(*coord)) for coord in coord_list]
         elif 'wgs84' == from_coord_type:
             if 'gcj02' == to_coord_type:
                 result_list = [list(self.wgs84_to_gcj02(*coord)) for coord in coord_list]
-            if 'bdo9ll' == to_coord_type:
+            if 'bd09ll' == to_coord_type:
                 result_list = [list(self.wgs84_to_bd09(*coord)) for coord in coord_list]
         else:
             if 'wgs84' == to_coord_type:

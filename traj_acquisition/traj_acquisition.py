@@ -2,25 +2,47 @@ import os, json
 
 import pandas as pd
 import requests
-from utils.coordinates import CoordinatesTransform
 import openrouteservice as ors
+from pydantic import BaseModel, ValidationError
+from pyproj import CRS, Transformer
+from shapely.geometry import Point, LineString
+from utils.coordinates import CoordinatesTransform
 from utils.config_parse import get_api_key
-from traj_info_perfection import DrivingStateSimulate
+from traj_acquisition.traj_info_perfection import DrivingStateSimulate
+
+
+class TrajAcquisitionItem(BaseModel):
+    # 对于base_data、raw_data，仅校验其是否存在，后续在TrajectoryCompare初始化时根据data_type进行字段校验
+    origin: str
+    destination: str
+    way_points: str = ""
+    method_type: str = "amap"
+    coord_type: str = "gcj02"
+    other_params: dict = None
+    interpolate_flag: bool = False
+    save_path: str = ""
+    save_name: str = ""
+    result_type: str = "csv"
+    logger: object = None
 
 
 class TrajAcquisition:
     def __init__(self, origin, destination, way_points="",
-                 method_type="amap", coord_type="gcj02", other_params=None, save_path=""):
+                 method_type="amap", coord_type="gcj02", other_params=None, interpolate_flag=False,
+                 save_path="", save_name="", result_type="csv", logger=None):
         self.raw_origin = origin
         self.raw_destination = destination
         self.raw_way_points = way_points
         self.method_type = method_type
         self.coord_type = coord_type
         self.other_params = other_params
+        self.interpolate_flag = interpolate_flag
         self.save_path = save_path
+        self.save_name = save_name
+        self.result_type = result_type
+        self.logger = logger
 
         self.coordinates = None
-        self.profile = "driving-hgv"
         self.result_data = None
 
         self.alternative_methods = ["amap", "baidu", "ors"]
@@ -36,30 +58,34 @@ class TrajAcquisition:
                             "Longitude first, latitude last, longitude and latitude are divided by ','")
 
         # 检查坐标点是否在国内：先进行坐标转换gcj02/bd09ll-->wgs84
+        in_china = True
         if "wgs84" == self.coord_type:
             lng, lat = map(float, self.raw_origin.split(','))
             if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
-
+                in_china = False
             lng, lat = map(float, self.raw_destination.split(','))
             if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
+                in_china = False
         if "gcj02" == self.coord_type:
             lng, lat = CoordinatesTransform().gcj02_to_wgs84(*map(float, self.raw_origin.split(',')))
             if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
-
+                in_china = False
             lng, lat = CoordinatesTransform().gcj02_to_wgs84(*map(float, self.raw_destination.split(',')))
             if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
+                in_china = False
         if "bd09ll" == self.coord_type:
-            lng, lat = CoordinatesTransform().gcj02_to_bd09(*map(float, self.raw_origin.split(',')))
+            lng, lat = CoordinatesTransform().bd09_to_wgs84(*map(float, self.raw_origin.split(',')))
             if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
+                in_china = False
+            lng, lat = CoordinatesTransform().bd09_to_wgs84(*map(float, self.raw_destination.split(',')))
+            if not CoordinatesTransform().is_in_china(lng, lat):
+                in_china = False
 
-            lng, lat = CoordinatesTransform().gcj02_to_wgs84(*map(float, self.raw_destination.split(',')))
-            if not CoordinatesTransform().is_in_china(lng, lat):
-                raise Exception("The origin is not in China")
+        if not in_china:
+            # 若不在国内，则使用ORS方法
+            self.method_type = 'ors'
+            self.alternative_methods = ['ors']
+            # raise Exception("The origin is not in China")
 
         if self.coord_type not in ['wgs84', 'gcj02', 'bd09ll']:
             raise Exception(f"{self.coord_type} is not supported")
@@ -131,30 +157,33 @@ class TrajAcquisition:
 
     def __acquire_traj_ors(self):
         # 调用direction函数确定两点之间的最短路
-        key = get_api_key('ors')
+        key = get_api_key(method='ors')
         client = ors.Client(key=key)
 
+        params = {"coordinates": self.coordinates}
         # 更新参数，使用字典作为输入
-        # if self.other_params is not None:
-        #     params.update(self.other_params)
+        if self.other_params is not None:
+            for param in ['profile', 'format']:
+                if param in self.other_params:
+                    params[param] = self.other_params[param]
 
         try:
-            route = client.directions(
-                coordinates=self.coordinates,
-                profile=self.profile,
-                format="geojson"
-            )
+            route = client.directions(**params)
+            # route = client.directions(
+            #     coordinates=self.coordinates,
+            #     profile=self.profile,
+            #     format="geojson"
+            # )
             coors_list = route["features"][0]["geometry"]["coordinates"]
             print(len(coors_list))
             self.result_data = coors_list
         except Exception as e:
             print('Failed to get shortest path using ORS')
             return None
-        pass
 
     def __acquire_traj_amap(self):
         url = 'https://restapi.amap.com/v5/direction/driving'
-        key = get_api_key('amap')
+        key = get_api_key(method='amap')
         params = {"key": key,
                   "origin": self.origin,
                   "destination": self.destination}
@@ -191,7 +220,7 @@ class TrajAcquisition:
     def __acquire_traj_baidu(self):
         # 接口地址
         url = "https://api.map.baidu.com/direction/v2/driving"
-        ak = get_api_key('baidu')
+        ak = get_api_key(method='baidu')
 
         params = {
             "origin": self.origin,
@@ -218,6 +247,44 @@ class TrajAcquisition:
             print(len(coors_list))
             self.result_data = coors_list
 
+    def __enhance_by_interpolate(self):
+        # 坐标系转换
+        coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), self.coord_type, 'wgs84', 'list')
+
+        # 指定采样间距
+        sample_interval = 100
+        from_crs = CRS('EPSG: 4326')
+        to_crs = CRS('EPSG: 32648')
+
+        trans_4326 = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+        trans_32648 = Transformer.from_crs(to_crs, from_crs, always_xy=True)
+
+        # 地理坐标系转换为投影坐标系
+        points_utm = [trans_4326.transform(lng, lat) for lng, lat in coords]
+        line_utm = LineString(points_utm)
+        # 给result_data新增distance列
+        distance_list = [line_utm.project(Point(point)) for point in points_utm]
+        self.result_data['distance'] = distance_list
+
+        resample_data = pd.DataFrame()
+        total_length = line_utm.length
+        distance_list = [i * sample_interval for i in range(int(total_length / sample_interval))]
+        points_utm = [line_utm.interpolate(distance) for distance in distance_list]
+        points_wgs84 = [trans_32648.transform(point.x, point.y) for point in points_utm]
+        # 坐标系转换
+        coords = CoordinatesTransform().coord_transform(points_wgs84, 'wgs84', self.coord_type, 'list')
+        resample_data[['lng', 'lat']] = coords
+        resample_data['distance'] = distance_list
+        # 指定node_type
+        # resample_data['node_type'] = 'resample'
+
+        self.result_data = pd.concat([self.result_data, resample_data], ignore_index=True)
+
+        self.result_data.sort_values(by='distance', inplace=True)
+        self.result_data.drop_duplicates(subset='distance', keep='first', inplace=True)
+        self.result_data.reset_index(drop=True, inplace=True)
+        self.result_data.drop(columns='distance', inplace=True)
+
     def __acquire_traj_process(self):
         # 先调用给定的method，若失败则自动调用其他API
         self.alternative_methods.remove(self.method_type)
@@ -238,6 +305,11 @@ class TrajAcquisition:
 
         if self.result_data:
             self.result_data = pd.DataFrame(self.result_data, columns=['lng', 'lat'])
+            if self.interpolate_flag:
+                # 插值前需要先将坐标系转换为WGS84
+                self.__enhance_by_interpolate()
+        else:
+            print("trajectory acquisition has failed")
 
     def process(self):
         # 根据method_type检查参数
@@ -266,9 +338,10 @@ if __name__ == '__main__':
               # "coord_type": "bd09ll",
               "other_params": other_params
               }
-    traj_acquisition = TrajAcquisition(**inputs)
-    # 获取轨迹
-    traj_acquisition.process()
-    # 使用ORS库获取轨迹
-    pass
+    try:
+        TrajAcquisitionItem(**inputs)
+        traj_acquisition = TrajAcquisition(**inputs)
+        traj_acquisition.process()
+    except ValidationError as e:
+        print(e)
 
