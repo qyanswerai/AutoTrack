@@ -9,7 +9,7 @@ from utils.basic_utils import cal_bearing, cal_haversine_dis, split_segment
 class DrivingStateSimulate:
     def __init__(self, raw_data, start_time="2014-06-07 08:00:00", max_speed=100,
                  lower_time_interval=5, upper_time_interval=30, stop_flag=False, stop_num=5):
-        self.traj_data = raw_data
+        self.traj_data = raw_data.copy()
         self.start_time = start_time
         self.max_speed = max_speed
         self.lower_time_interval = lower_time_interval

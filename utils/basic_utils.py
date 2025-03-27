@@ -12,7 +12,9 @@ def pd_to_geojson(data, data_info):
     # 确定起点、终点信息（根据起止轨迹点确定）
     start_point = data[["lng", "lat", "timestamp"]].iloc[0].to_dict()
     end_point = data[["lng", "lat", "timestamp"]].iloc[-1].to_dict()
-    # Object of type int64 is not JSON serializable，因此转换为str
+    # Object of type int64 is not JSON serializable，可以转换为str（简单的处理方式）
+    # 或者转换为时间：pd.Timestamp(data['timestamp'].iloc[0],unit='ms',tz='Asia/Shanghai')
+    #     1402099200000 ==> Timestamp('2014-06-07 08:00:00+0800', tz='Asia/Shanghai')
     start_time = str(data["timestamp"].iloc[0])
     end_time = str(data["timestamp"].iloc[-1])
     start_point["timestamp"] = start_time
@@ -64,7 +66,7 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
     # 是否保存处理后的轨迹
     if data is not None and save_path != "":
         if file_name == "":
-            file_path = os.path.join(save_path, str(int(time.time())) + '.' + save_type)
+            file_path = os.path.join(save_path, str(int(time.time() * 1000)) + '.' + save_type)
         else:
             file_path = os.path.join(save_path, file_name + '.' + save_type)
 

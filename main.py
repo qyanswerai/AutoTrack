@@ -41,7 +41,7 @@ if __name__ == '__main__':
               "other_params": other_params,
               "logger": logger,
               "save_path": save_path,
-              "result_type": "json"
+              "result_type": "csv"
               }
 
     try:

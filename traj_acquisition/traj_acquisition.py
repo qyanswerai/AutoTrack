@@ -53,12 +53,13 @@ class TrajAcquisition:
     def __check_input_params(self):
         # 对起终点进行检查：是否包含经纬度（不检查经度在前还是维度在前）
         if not isinstance(self.raw_origin, str) or len(self.raw_origin.split(',')) != 2:
+            self.logger.error("The origin is incorrect, longitude and latitude should be divided by ','")
             raise Exception("The origin is incorrect, "
                             "Longitude first, latitude last, longitude and latitude are divided by ','")
 
         if not isinstance(self.raw_destination, str) or len(self.raw_destination.split(',')) != 2:
-            raise Exception("The destination is incorrect, "
-                            "Longitude first, latitude last, longitude and latitude are divided by ','")
+            self.logger.error("The destination is incorrect, longitude and latitude should be divided by ','")
+            raise Exception("The destination is incorrect, longitude and latitude should be divided by ','")
 
         # 检查坐标点是否在国内：先进行坐标转换gcj02/bd09ll-->wgs84
         in_china = True
@@ -88,12 +89,15 @@ class TrajAcquisition:
             # 若不在国内，则使用ORS方法
             self.method_type = 'ors'
             self.alternative_methods = ['ors']
+            self.logger.warning("The origin or destination is not in China, only ors method available")
             # raise Exception("The origin is not in China")
 
         if self.coord_type not in ['wgs84', 'gcj02', 'bd09ll']:
+            self.logger.error(f"{self.coord_type} is not supported")
             raise Exception(f"{self.coord_type} is not supported")
 
         if self.method_type not in ['ors', 'amap', 'baidu']:
+            self.logger.error(f"{self.method_type} is not supported")
             raise Exception(f"{self.method_type} is not supported")
 
     def __transform_input_coord(self):
@@ -172,17 +176,13 @@ class TrajAcquisition:
 
         try:
             route = client.directions(**params)
-            # route = client.directions(
-            #     coordinates=self.coordinates,
-            #     profile=self.profile,
-            #     format="geojson"
-            # )
             coors_list = route["features"][0]["geometry"]["coordinates"]
             print(len(coors_list))
             self.result_data = coors_list
         except Exception as e:
             print('Failed to get shortest path using ORS')
-            return None
+            self.logger.error(f'Failed to get shortest path using ORS: {e}')
+            raise Exception(e)
 
     def __acquire_traj_amap(self):
         url = 'https://restapi.amap.com/v5/direction/driving'
@@ -218,7 +218,9 @@ class TrajAcquisition:
                     print(response["info"])
 
         except Exception as e:
-            print(e)
+            print('Failed to get shortest path using amap')
+            self.logger.error(f'Failed to get shortest path using amap: {e}')
+            raise Exception(e)
 
     def __acquire_traj_baidu(self):
         # 接口地址
@@ -235,20 +237,21 @@ class TrajAcquisition:
         if self.way_points:
             params["waypoints"] = self.way_points
 
-        # if self.other_params is not None:
-        #     if "ret_coordtype" in self.other_params:
-        #         params["ret_coordtype"] = self.other_params["ret_coordtype"]
-
-        response = requests.get(url=url, params=params)
-        if response.status_code == 200:
-            response = response.json()
-            coors_list = []
-            for route in response['result']['routes']:
-                for step in route['steps']:
-                    coors_list.extend(step['path'].split(';'))
-            coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
-            print(len(coors_list))
-            self.result_data = coors_list
+        try:
+            response = requests.get(url=url, params=params)
+            if response.status_code == 200:
+                response = response.json()
+                coors_list = []
+                for route in response['result']['routes']:
+                    for step in route['steps']:
+                        coors_list.extend(step['path'].split(';'))
+                coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
+                print(len(coors_list))
+                self.result_data = coors_list
+        except Exception as e:
+            print('Failed to get shortest path using baidu')
+            self.logger.error(f'Failed to get shortest path using baidu: {e}')
+            raise Exception(e)
 
     def __enhance_by_interpolate(self):
         # 坐标系转换
@@ -306,29 +309,39 @@ class TrajAcquisition:
             if "baidu" == self.method_type:
                 self.__acquire_traj_baidu()
 
+        self.data_info["method_type"] = self.method_type
+        self.data_info["coord_type"] = self.coord_type
+        self.logger.info(f"method type: {self.method_type}")
+        self.logger.info(f"coord type: {self.coord_type}")
+
         if self.result_data:
             self.result_data = pd.DataFrame(self.result_data, columns=['lng', 'lat'])
             if self.interpolate_flag:
                 # 插值前需要先将坐标系转换为WGS84
                 self.__enhance_by_interpolate()
-        else:
-            print("trajectory acquisition has failed")
+
+            # 获取timestamp、speed、direction
+            driving_state_simulate = DrivingStateSimulate(self.result_data)
+            self.result_data = driving_state_simulate.process()
 
     def process(self):
-        # 根据method_type检查参数
-        self.__check_input_params()
+        try:
+            # 根据method_type检查参数
+            self.__check_input_params()
+            self.logger.info("input params has been checked")
 
-        # 调用API或者库函数，获取轨迹点坐标
-        self.__acquire_traj_process()
+            # 调用API或者库函数，获取轨迹点坐标
+            self.__acquire_traj_process()
+            self.logger.info("trajectory has been acquired successfully")
 
-        # 获取timestamp、speed、direction
-        driving_state_simulate = DrivingStateSimulate(self.result_data)
-        self.result_data = driving_state_simulate.process()
+            if not self.result_data.empty:
+                # 保存轨迹信息（保存为pd、geojson文件）
+                save_data(self.result_data, self.data_info, self.save_path, self.save_name, self.result_type)
+        except Exception as e:
+            print(f"trajectory acquisition has failed: {e}")
+            self.logger.error(f"trajectory acquisition has failed: {e}")
 
-        # 保存轨迹信息（保存为pd、geojson文件）
-        self.data_info["method_type"] = self.method_type
-        self.data_info["coord_type"] = self.coord_type
-        save_data(self.result_data, self.data_info, self.save_path, self.save_name, self.result_type)
+        return self.result_data
 
 
 if __name__ == '__main__':
