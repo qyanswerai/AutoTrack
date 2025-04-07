@@ -1,5 +1,4 @@
 import os
-import json
 from pydantic import ValidationError
 from traj_acquisition.traj_acquisition import TrajAcquisitionItem, TrajAcquisition
 

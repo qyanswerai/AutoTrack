@@ -1,5 +1,3 @@
-import os, json
-
 import pandas as pd
 import requests
 import openrouteservice as ors
@@ -13,7 +11,6 @@ from traj_acquisition.traj_info_perfection import DrivingStateSimulate
 
 
 class TrajAcquisitionItem(BaseModel):
-    # 对于base_data、raw_data，仅校验其是否存在，后续在TrajectoryCompare初始化时根据data_type进行字段校验
     origin: str
     destination: str
     way_points: str = ""
@@ -21,6 +18,8 @@ class TrajAcquisitionItem(BaseModel):
     coord_type: str = "gcj02"
     other_params: dict = None
     interpolate_flag: bool = False
+    simulate_flag: bool = True
+    result_coord_type: str = "wgs84"
     save_path: str = ""
     save_name: str = ""
     result_type: str = "csv"
@@ -30,6 +29,7 @@ class TrajAcquisitionItem(BaseModel):
 class TrajAcquisition:
     def __init__(self, origin, destination, way_points="",
                  method_type="amap", coord_type="gcj02", other_params=None, interpolate_flag=False,
+                 simulate_flag=True, result_coord_type="wgs84",
                  save_path="", save_name="", result_type="csv", logger=None):
         self.raw_origin = origin
         self.raw_destination = destination
@@ -38,17 +38,30 @@ class TrajAcquisition:
         self.coord_type = coord_type
         self.other_params = other_params
         self.interpolate_flag = interpolate_flag
+        self.simulate_flag = simulate_flag
+        self.result_coord_type = result_coord_type
         self.save_path = save_path
         self.save_name = save_name
         self.result_type = result_type
         self.logger = logger
 
+        self.alternative_methods = ["amap", "baidu", "ors"]
+        self.method_coord_info = {"amap": "gcj02", "baidu": "bd09ll", "ors": "wgs84"}
+
         self.coordinates = None
         self.result_data = None
 
-        self.data_info = {"origin": self.raw_origin, "destination": self.raw_destination, "way_points": self.raw_way_points}
+        self.final_method_type = self.method_type
 
-        self.alternative_methods = ["amap", "baidu", "ors"]
+        # 一方面，将result_info作为主流程的返回值
+        # 另一方面，用于保存json文件
+        # 说明：额外保存一份geojson文件（可用于前端展示）
+        self.result_info = {"origin": self.raw_origin,
+                            "destination": self.raw_destination,
+                            "way_points": self.raw_way_points,
+                            "final_method_type": self.final_method_type,
+                            "result_coord_type": self.result_coord_type,
+                            "traj_points": []}
 
     def __check_input_params(self):
         # 对起终点进行检查：是否包含经纬度（不检查经度在前还是维度在前）
@@ -182,7 +195,7 @@ class TrajAcquisition:
         except Exception as e:
             print('Failed to get shortest path using ORS')
             self.logger.error(f'Failed to get shortest path using ORS: {e}')
-            raise Exception(e)
+            # raise Exception(e)
 
     def __acquire_traj_amap(self):
         url = 'https://restapi.amap.com/v5/direction/driving'
@@ -220,7 +233,7 @@ class TrajAcquisition:
         except Exception as e:
             print('Failed to get shortest path using amap')
             self.logger.error(f'Failed to get shortest path using amap: {e}')
-            raise Exception(e)
+            # raise Exception(e)
 
     def __acquire_traj_baidu(self):
         # 接口地址
@@ -251,11 +264,11 @@ class TrajAcquisition:
         except Exception as e:
             print('Failed to get shortest path using baidu')
             self.logger.error(f'Failed to get shortest path using baidu: {e}')
-            raise Exception(e)
+            # raise Exception(e)
 
-    def __enhance_by_interpolate(self):
+    def __enhance_by_interpolate(self, tem_coord_type):
         # 坐标系转换
-        coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), self.coord_type, 'wgs84', 'list')
+        coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, 'wgs84', 'list')
 
         # 指定采样间距
         sample_interval = 100
@@ -277,9 +290,7 @@ class TrajAcquisition:
         distance_list = [i * sample_interval for i in range(int(total_length / sample_interval))]
         points_utm = [line_utm.interpolate(distance) for distance in distance_list]
         points_wgs84 = [trans_32648.transform(point.x, point.y) for point in points_utm]
-        # 坐标系转换
-        coords = CoordinatesTransform().coord_transform(points_wgs84, 'wgs84', self.coord_type, 'list')
-        resample_data[['lng', 'lat']] = coords
+        resample_data[['lng', 'lat']] = points_wgs84
         resample_data['distance'] = distance_list
         # 指定node_type
         # resample_data['node_type'] = 'resample'
@@ -297,7 +308,7 @@ class TrajAcquisition:
         self.alternative_methods.insert(0, self.method_type)
 
         while self.result_data is None and len(self.alternative_methods) > 0:
-            self.method_type = self.alternative_methods.pop(0)
+            self.final_method_type = self.alternative_methods.pop(0)
             self.__transform_input_coord()
             # 根据method_type检查必填的参数
             if "ors" == self.method_type:
@@ -309,20 +320,24 @@ class TrajAcquisition:
             if "baidu" == self.method_type:
                 self.__acquire_traj_baidu()
 
-        self.data_info["method_type"] = self.method_type
-        self.data_info["coord_type"] = self.coord_type
-        self.logger.info(f"method type: {self.method_type}")
-        self.logger.info(f"coord type: {self.coord_type}")
-
-        if self.result_data:
+        if self.result_data is not None:
             self.result_data = pd.DataFrame(self.result_data, columns=['lng', 'lat'])
+            # 确定所获取的轨迹的坐标系（由method_type决定）
+            tem_coord_type = self.method_coord_info[self.method_type]
             if self.interpolate_flag:
-                # 插值前需要先将坐标系转换为WGS84
-                self.__enhance_by_interpolate()
+                # 插值前需要先将tem_coord_type转换为WGS84
+                self.__enhance_by_interpolate(tem_coord_type)
+                tem_coord_type = 'wgs84'
 
-            # 获取timestamp、speed、direction
-            driving_state_simulate = DrivingStateSimulate(self.result_data)
-            self.result_data = driving_state_simulate.process()
+            # 坐标系转换为result_coord_type
+            coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, self.result_coord_type, 'list')
+            self.result_data[['lng', 'lat']] = coords
+            self.result_info["final_method_type"] = self.final_method_type
+            self.logger.info(f"final method type: {self.final_method_type}")
+
+            return True
+        else:
+            return False
 
     def process(self):
         try:
@@ -331,12 +346,17 @@ class TrajAcquisition:
             self.logger.info("input params has been checked")
 
             # 调用API或者库函数，获取轨迹点坐标
-            self.__acquire_traj_process()
-            self.logger.info("trajectory has been acquired successfully")
+            acquired_flag = self.__acquire_traj_process()
+            if acquired_flag:
+                self.logger.info("trajectory has been acquired successfully")
 
-            if not self.result_data.empty:
-                # 保存轨迹信息（保存为pd、geojson文件）
-                save_data(self.result_data, self.data_info, self.save_path, self.save_name, self.result_type)
+                # 获取timestamp、speed、direction
+                if self.simulate_flag:
+                    driving_state_simulate = DrivingStateSimulate(self.result_data)
+                    self.result_data = driving_state_simulate.process()
+
+                # 保存轨迹信息（保存为pd、json文件）
+                save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
         except Exception as e:
             print(f"trajectory acquisition has failed: {e}")
             self.logger.error(f"trajectory acquisition has failed: {e}")
