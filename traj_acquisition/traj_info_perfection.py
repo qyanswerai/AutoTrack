@@ -115,7 +115,7 @@ class DrivingStateSimulate:
         self.traj_data['timestamp'] = timestamp_list
         # 指定为int64而不是int，避免超出范围
         self.traj_data['timestamp'] = self.traj_data['timestamp'].astype('int64')
-        self.traj_data.drop(columns='distance', inplace=True)
+        self.traj_data.drop(columns=['lng_up', 'lat_up', 'distance'], inplace=True)
 
     def __generate_direction(self):
         self.traj_data['direction'] = self.traj_data.apply(
@@ -162,7 +162,7 @@ class DrivingStateSimulate:
         # 生成时间戳
         self.__generate_timestamp()
         # 生成航向角
-        self.__generate_direction()
+        # self.__generate_direction()
         if self.stop_flag:
             self.__generate_stop_segment()
         return self.traj_data

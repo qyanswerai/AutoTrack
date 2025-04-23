@@ -7,7 +7,7 @@ log_dir = './logs'
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
-log_file_path = os.path.join(log_dir, 'trajectory_compare_service.log')
+log_file_path = os.path.join(log_dir, 'trajectory_acquisition_service.log')
 
 # 配置日志记录器
 logging.basicConfig(
@@ -21,8 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-if __name__ == '__main__':
-    # path = r'data/raw_data'
+def traj_acquisition_test():
     save_path = r"data/result_data"
 
     # 起点、终点、中间点的形式符合高德驾车路径规划API的要求
@@ -40,7 +39,7 @@ if __name__ == '__main__':
               "other_params": other_params,
               "logger": logger,
               "save_path": save_path,
-              "result_type": "csv"
+              "result_type": "json"
               }
 
     try:
@@ -49,3 +48,9 @@ if __name__ == '__main__':
         traj_acquisition.process()
     except ValidationError as e:
         print(e)
+    pass
+
+
+if __name__ == '__main__':
+    traj_acquisition_test()
+

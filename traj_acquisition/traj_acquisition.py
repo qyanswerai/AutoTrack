@@ -6,7 +6,7 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Point, LineString
 from utils.coordinates import CoordinatesTransform
 from utils.config_parse import get_api_key
-from utils.basic_utils import save_data
+from utils.basic_utils import save_data, cal_direction
 from traj_acquisition.traj_info_perfection import DrivingStateSimulate
 
 
@@ -345,15 +345,21 @@ class TrajAcquisition:
             self.__check_input_params()
             self.logger.info("input params has been checked")
 
-            # 调用API或者库函数，获取轨迹点坐标
+            # 调用API或者库函数，获取轨迹点坐标lng、lat
             acquired_flag = self.__acquire_traj_process()
             if acquired_flag:
                 self.logger.info("trajectory has been acquired successfully")
 
-                # 获取timestamp、speed、direction
+                # 计算direction
+                cal_direction(self.result_data)
+
+                # 生成timestamp、speed
                 if self.simulate_flag:
                     driving_state_simulate = DrivingStateSimulate(self.result_data)
                     self.result_data = driving_state_simulate.process()
+
+                # 更新result_info
+                self.result_info["traj_points"] = self.result_data.to_dict(orient="records")
 
                 # 保存轨迹信息（保存为pd、json文件）
                 save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
