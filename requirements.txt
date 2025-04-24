@@ -1,0 +1,10 @@
+folium==0.19.5
+geojson==3.2.0
+matplotlib==3.10.1
+numpy==2.2.3
+openrouteservice==2.3.3
+pandas==2.2.3
+pydantic==2.10.6
+pyproj==3.7.0
+Requests==2.32.3
+Shapely==2.0.6

@@ -85,6 +85,10 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
         # 单独保存一份geojson格式的json文件
         file_path = os.path.join(save_path, file_name + '_geojson.json')
         with open(file_path, 'w', encoding='utf-8') as f:
+            data_info = data_info.copy()
+            # traj_points不放在geojson文件的meta字段中
+            data_info.pop('traj_points')
+
             json_data = pd_to_geojson(data, data_info)
             # 使用json.dump()方法将feature_collection对象写入文件
             json.dump(json_data, f, ensure_ascii=False, indent=4)

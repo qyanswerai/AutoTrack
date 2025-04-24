@@ -17,6 +17,8 @@ class DrawGPS:
         self.geojson_flag = False
         self.data = None
         self.pd_data = None
+        # 可视化地图的初始化视角位置
+        self.view_point = None
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
@@ -30,13 +32,16 @@ class DrawGPS:
             if "type" in self.data and self.data["type"] == "FeatureCollection":
                 self.geojson_flag = True
                 self.coord_type = self.data["meta"]["result_coord_type"]
+                self.view_point = [self.data["meta"]["start_point"]["lat"], self.data["meta"]["start_point"]["lng"]]
             else:
                 self.coord_type = self.data["result_coord_type"]
                 # 转换为dataframe，方便绘图
                 self.pd_data = pd.DataFrame(self.data["traj_points"])
+                self.view_point = self.pd_data.iloc[0][['lat', 'lng']].values
         else:
             self.data = pd.read_csv(file_path)
             self.pd_data = self.data.copy(deep=True)
+            self.view_point = self.pd_data.iloc[0][['lat', 'lng']].values
 
         # folium默认使用OpenStreetMap作为底图，为了避免加载不出来，可以替换为高德、百度的瓦片地图（需要与coord_type匹配，不然会偏移）
         if self.coord_type == "gcj02":
@@ -49,7 +54,7 @@ class DrawGPS:
             tiles = "OpenStreetMap"
             attr = None
 
-        map_params = {"location": [30.574948, 104.064593], "zoom_start": 6, "tiles": tiles, "attr": attr}
+        map_params = {"location": self.view_point, "zoom_start": 9, "tiles": tiles, "attr": attr}
         self.m = folium.Map(**map_params)
 
     def draw_track(self):
