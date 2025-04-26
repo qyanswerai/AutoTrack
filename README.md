@@ -3,7 +3,7 @@
 [AutoTraj库的【轨迹获取模块】](https://github.com/qyanswerai/AutoTraj)能够生成字段齐全的轨迹数据
 **项目地址：[https://github.com/qyanswerai/AutoTraj](https://github.com/qyanswerai/AutoTraj)**
 
-![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/fd3255b850164028a26984468752612d.png)
+![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/725320cf16294652a3eddd48d8a8ce29.png)
 
 **【核心功能说明】**
 - **【获取经纬度】**：给定起点、终点坐标，调用高德、百度、`OpenRouteService`（简称`amap`、`baidu`、`ors`）的相关接口或方法获取起终点之间的路线（路线上各个点的经纬度坐标）
