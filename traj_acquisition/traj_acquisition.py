@@ -64,6 +64,10 @@ class TrajAcquisition:
                             "traj_points": []}
 
     def __check_input_params(self):
+        """
+        入参检查：是否包含经纬度、是否在国内...
+        :return:
+        """
         # 对起终点进行检查：是否包含经纬度（不检查经度在前还是维度在前）
         if not isinstance(self.raw_origin, str) or len(self.raw_origin.split(',')) != 2:
             self.logger.error("The origin is incorrect, longitude and latitude should be divided by ','")
@@ -114,6 +118,10 @@ class TrajAcquisition:
             raise Exception(f"{self.method_type} is not supported")
 
     def __transform_input_coord(self):
+        """
+        入参（起点、终点、中间点）坐标调整：以method_type为准，转换坐标系并调整为相应的形式
+        :return:
+        """
         # 检查method_type与coord_type是否匹配，否则进行坐标转换
         # 将origin、destination、way_points转换为与method_type匹配的形式
         if "ors" == self.method_type:
@@ -176,6 +184,10 @@ class TrajAcquisition:
                     self.way_points = ""
 
     def __acquire_traj_ors(self):
+        """
+        使用ors获取轨迹
+        :return:
+        """
         # 调用direction函数确定两点之间的最短路
         key = get_api_key(method='ors')
         client = ors.Client(key=key)
@@ -198,6 +210,10 @@ class TrajAcquisition:
             # raise Exception(e)
 
     def __acquire_traj_amap(self):
+        """
+        使用高德获取轨迹
+        :return:
+        """
         url = 'https://restapi.amap.com/v5/direction/driving'
         key = get_api_key(method='amap')
         params = {"key": key,
@@ -236,6 +252,10 @@ class TrajAcquisition:
             # raise Exception(e)
 
     def __acquire_traj_baidu(self):
+        """
+        使用百度获取轨迹
+        :return:
+        """
         # 接口地址
         url = "https://api.map.baidu.com/direction/v2/driving"
         ak = get_api_key(method='baidu')
@@ -267,6 +287,11 @@ class TrajAcquisition:
             # raise Exception(e)
 
     def __enhance_by_interpolate(self, tem_coord_type):
+        """
+        等距插值，增加轨迹点数量
+        :param tem_coord_type: 所获取的轨迹的坐标系
+        :return:
+        """
         # 坐标系转换
         coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, 'wgs84', 'list')
 
@@ -303,6 +328,10 @@ class TrajAcquisition:
         self.result_data.drop(columns='distance', inplace=True)
 
     def __acquire_traj_process(self):
+        """
+        轨迹获取主流程
+        :return:
+        """
         # 先调用给定的method，若失败则自动调用其他API
         self.alternative_methods.remove(self.method_type)
         self.alternative_methods.insert(0, self.method_type)
@@ -340,6 +369,10 @@ class TrajAcquisition:
             return False
 
     def process(self):
+        """
+        主流程：轨迹获取、字段生成、文件保存
+        :return: 轨迹数据（字典对象）
+        """
         try:
             # 根据method_type检查参数
             self.__check_input_params()
@@ -367,7 +400,7 @@ class TrajAcquisition:
             print(f"trajectory acquisition has failed: {e}")
             self.logger.error(f"trajectory acquisition has failed: {e}")
 
-        return self.result_data
+        return self.result_info
 
 
 if __name__ == '__main__':

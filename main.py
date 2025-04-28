@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 def traj_acquisition_test():
+    """
+    测试轨迹获取功能
+    :return:
+    """
     save_path = r"data/result_data"
 
     # 起点、终点、中间点的形式符合高德驾车路径规划API的要求

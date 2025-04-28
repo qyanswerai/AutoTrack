@@ -10,6 +10,12 @@ from utils.coordinates import CoordinatesTransform
 
 
 def pd_to_geojson(data, data_info):
+    """
+    dataframe转换为geojson
+    :param data: dataframe格式的轨迹数据
+    :param data_info: 轨迹数据相关信息，例如起终点
+    :return: geojson格式的轨迹数据
+    """
     # 保存轨迹、起始点
     feature_list = []
 
@@ -67,6 +73,15 @@ def pd_to_geojson(data, data_info):
 
 
 def save_data(data, data_info=None, save_path="", file_name="", save_type="csv"):
+    """
+    保存轨迹数据
+    :param data: 轨迹数据
+    :param data_info: 轨迹数据相关信息
+    :param save_path: 保存路径
+    :param file_name: 文件名
+    :param save_type: 文件类型
+    :return:
+    """
     # 是否保存处理后的轨迹
     if data is not None and save_path != "":
         if file_name == "":
@@ -95,6 +110,12 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
 
 
 def cal_haversine_dis(cur_point, next_point):
+    """
+    采用haversine公式，根据坐标计算距离
+    :param cur_point: 点的坐标
+    :param next_point: 另一个点的坐标
+    :return: 距离（单位：m）
+    """
     AVG_EARTH_RADIUS = 6371.0088  # in kilometers
 
     lng1, lat1 = cur_point
@@ -111,7 +132,9 @@ def cal_haversine_dis(cur_point, next_point):
 
 def cal_haversine_dis_vector(df):
     """
-    向量化计算相邻点之间的球面距离（单位：km）
+    向量化计算相邻点之间的球面距离（单位：m），返回距离数组
+    :param df: 轨迹数据，要求有lng、lat列（用于计算距离）
+    :return: 距离数组
     """
     AVG_EARTH_RADIUS = 6371.0088  # in kilometers
     # 将角度转换为弧度
@@ -142,6 +165,14 @@ def cal_haversine_dis_vector(df):
 
 
 def cal_bearing(lng1, lat1, lng2, lat2):
+    """
+    根据坐标计算航向角（两点连线的角度）
+    :param lng1: 上游轨迹点经度
+    :param lat1: 上游轨迹点纬度
+    :param lng2: 下游轨迹点经度
+    :param lat2: 下游轨迹点纬度
+    :return: 航向角
+    """
     # 将经纬度从度转换为弧度
     lng1_rad, lat1_rad, lng2_rad, lat2_rad = map(math.radians, [lng1, lat1, lng2, lat2])
 
@@ -163,6 +194,11 @@ def cal_bearing(lng1, lat1, lng2, lat2):
 
 
 def split_segment(l):
+    """
+    列表划分为子列表：例如[1,2,3,5,7,8,10]==>[[1,2,3],[7,8]]
+    :param l: 列表（或者数组）
+    :return: 划分后的列表
+    """
     left = right = 0
     segment = []
     while right < len(l) - 1:
@@ -179,6 +215,11 @@ def split_segment(l):
 
 
 def cal_direction(data):
+    """
+    对于轨迹数据，计算或者更新航向角
+    :param data: 轨迹数据（要求有lng、lat列）
+    :return: 更新后的轨迹数据
+    """
     data[['lng_up', 'lat_up']] = data[['lng', 'lat']].shift(1)
     data[['lng_up', 'lat_up']] = data[['lng_up', 'lat_up']].bfill()
     data['direction'] = data.apply(
@@ -209,6 +250,13 @@ def cal_direction(data):
 
 
 def update_pd_data(data, from_crs="GCJ02", to_crs="WGS84"):
+    """
+    更新轨迹数据：对经纬度坐标进行坐标系转换
+    :param data: 轨迹数据
+    :param from_crs: 现状坐标系
+    :param to_crs: 目标坐标系
+    :return: 坐标转换后的轨迹数据
+    """
     coord_list = CoordinatesTransform().coord_transform(data[['lng', 'lat']].values.tolist(), from_crs, to_crs, 'list')
     coord_data = pd.DataFrame(coord_list, columns=['lng_transformed', 'lat_transformed'])
     result = pd.concat([data, coord_data], axis=1)
@@ -230,3 +278,6 @@ if __name__ == '__main__':
 
     d = cal_haversine_dis([lon1, lat1], [lon2, lat2])
     print(d)
+
+    segment = split_segment([1, 2, 3, 5, 7, 8, 10])
+    print(segment)

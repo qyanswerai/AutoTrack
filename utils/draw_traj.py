@@ -58,6 +58,10 @@ class DrawGPS:
         self.m = folium.Map(**map_params)
 
     def draw_track(self):
+        """
+        绘制轨迹、起终点
+        :return:
+        """
         if self.geojson_flag:
             # 使用GeoJson直接绘图，不能灵活设置图层、样式（不建议使用）
             folium.GeoJson(self.data, name='gps', color='blue', weight=2.5, opacity=0.8).add_to(self.m)
@@ -80,6 +84,10 @@ class DrawGPS:
                                 popup="终点").add_to(destination_layer)
 
     def process(self):
+        """
+        绘图主流程：绘制轨迹及起终点、添加测距控件、保存文件
+        :return:
+        """
         self.draw_track()
 
         # 添加测距控件

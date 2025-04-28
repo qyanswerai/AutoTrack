@@ -36,7 +36,16 @@ class DrivingStateSimulate:
                                      }
 
     def __generate_speed(self):
+        """
+        生成速度
+        :return:
+        """
         def get_speed_state(speed):
+            """
+            确定速度状态：低速、中速、高速、超高速
+            :param speed: 速度（单位：km/h）
+            :return: 速度状态
+            """
             if speed < 50:
                 ss = "low_speed"
             elif speed < 70:
@@ -48,6 +57,12 @@ class DrivingStateSimulate:
             return ss
 
         def get_next_state(speed_state, state):
+            """
+            根据速度状态、加速度状态确定下一时刻的加速度状态
+            :param speed_state: 速度状态
+            :param state: 加速度状态
+            :return: 下一时刻的加速度状态
+            """
             state_probability = self.state_transform_info[speed_state][state]
             value = np.random.uniform(0, 1)
             if value < state_probability[0]:
@@ -91,6 +106,10 @@ class DrivingStateSimulate:
         self.traj_data["speed"] = speed_list
 
     def __generate_timestamp(self):
+        """
+        生成时间戳
+        :return:
+        """
         self.traj_data['lng_up'] = self.traj_data['lng'].shift(1)
         self.traj_data['lat_up'] = self.traj_data['lat'].shift(1)
         self.traj_data[['lng_up', 'lat_up']] = self.traj_data[['lng_up', 'lat_up']].bfill()
@@ -118,6 +137,10 @@ class DrivingStateSimulate:
         self.traj_data.drop(columns=['lng_up', 'lat_up', 'distance'], inplace=True)
 
     def __generate_direction(self):
+        """
+        计算航向角（已弃用）
+        :return:
+        """
         self.traj_data['direction'] = self.traj_data.apply(
             lambda row: cal_bearing(row['lng_up'], row['lat_up'], row['lng'], row['lat']), axis=1)
 
@@ -145,6 +168,10 @@ class DrivingStateSimulate:
             self.traj_data.loc[stay_segment, 'direction'] = direction
 
     def __generate_stop_segment(self):
+        """
+        生成“停留段”（轨迹点瞬时速度设为0）
+        :return:
+        """
         # 直接修改速度
         for i in range(self.stop_num):
             stop_point = np.random.uniform(0, len(self.traj_data) - 1)
@@ -157,6 +184,10 @@ class DrivingStateSimulate:
             self.traj_data.loc[range(stop_left, stop_right + 1), 'speed'] = speeds
 
     def process(self):
+        """
+        轨迹字段生成：速度、时间戳
+        :return:
+        """
         # 生成速度
         self.__generate_speed()
         # 生成时间戳

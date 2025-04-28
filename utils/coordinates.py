@@ -9,16 +9,28 @@ class CoordinatesTransform:
         self.es = 0.00669342162296594323  # 偏心率平方
 
     def is_in_china(self, lng, lat):
-        """粗略判断坐标是否在中国范围内（适用于大部分场景）"""
+        """
+        粗略判断坐标是否在中国范围内（要求坐标系为WGS84）
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 是否在国内（bool变量）
+        """
+        """"""
         return 73.66 <= lng <= 135.05 and 3.86 <= lat <= 53.55
 
     def wgs84_to_gcj02(self, lng, lat):
+        """
+        wgs84 to gcj02
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
         # 若不在中国国内，直接返回wgs84坐标系下的坐标
         if not self.is_in_china(lng, lat):
             return lng, lat
 
-        d_lat = self.transform_lat(lng - 105.0, lat - 35.0)
-        d_lng = self.transform_lng(lng - 105.0, lat - 35.0)
+        d_lat = self.__transform_lat(lng - 105.0, lat - 35.0)
+        d_lng = self.__transform_lng(lng - 105.0, lat - 35.0)
         rad_lat = lat / 180.0 * self.pi
         magic = math.sin(rad_lat)
         magic = 1 - self.es * magic * magic
@@ -30,8 +42,14 @@ class CoordinatesTransform:
         return gcj_lng, gcj_lat
 
     def gcj02_to_wgs84(self, lng, lat):
-        d_lat = self.transform_lat(lng - 105.0, lat - 35.0)
-        d_lng = self.transform_lng(lng - 105.0, lat - 35.0)
+        """
+        gcj02 to wgs84
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
+        d_lat = self.__transform_lat(lng - 105.0, lat - 35.0)
+        d_lng = self.__transform_lng(lng - 105.0, lat - 35.0)
         rad_lat = lat / 180.0 * self.pi
         magic = math.sin(rad_lat)
         magic = 1 - self.es * magic * magic
@@ -42,7 +60,13 @@ class CoordinatesTransform:
         wgs_lat = lat * 2 - lat - d_lat
         return wgs_lng, wgs_lat
 
-    def transform_lat(self, lng, lat):
+    def __transform_lat(self, lng, lat):
+        """
+        计算纬度偏移
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 偏移量
+        """
         ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + \
               0.1 * lng * lat + 0.2 * math.sqrt(math.fabs(lng))
         ret += (20.0 * math.sin(6.0 * lng * self.pi) + 20.0 *
@@ -53,7 +77,13 @@ class CoordinatesTransform:
                 math.sin(lat * self.pi / 30.0)) * 2.0 / 3.0
         return ret
 
-    def transform_lng(self, lng, lat):
+    def __transform_lng(self, lng, lat):
+        """
+        计算经度偏移
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 偏移量
+        """
         ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + \
               0.1 * lng * lat + 0.1 * math.sqrt(math.fabs(lng))
         ret += (20.0 * math.sin(6.0 * lng * self.pi) + 20.0 *
@@ -66,6 +96,12 @@ class CoordinatesTransform:
 
     # GCJ02转BD09（火星坐标系转百度坐标系）
     def gcj02_to_bd09(self, lng, lat):
+        """
+        gcj02 to bd09
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
         z = math.sqrt(lng * lng + lat * lat) + 0.00002 * math.sin(lat * self.x_pi)
         theta = math.atan2(lat, lng) + 0.000003 * math.cos(lng * self.x_pi)
         bd_lng = z * math.cos(theta) + 0.0065
@@ -74,6 +110,12 @@ class CoordinatesTransform:
 
     # BD09转GCJ02（百度坐标系转火星坐标系）
     def bd09_to_gcj02(self, lng, lat):
+        """
+        bd09 to gcj02
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
         x = lng - 0.0065
         y = lat - 0.006
         z = math.sqrt(x * x + y * y) - 0.00002 * math.sin(y * self.x_pi)
@@ -84,15 +126,35 @@ class CoordinatesTransform:
 
     # WGS84转BD09（GPS转百度坐标系）
     def wgs84_to_bd09(self, lng, lat):
+        """
+        wgs84 to bd09
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
         gcj02 = self.wgs84_to_gcj02(lng, lat)
         return self.gcj02_to_bd09(gcj02[0], gcj02[1])
 
     # BD09转WGS84（百度坐标系转GPS）
     def bd09_to_wgs84(self, lng, lat):
+        """
+        bd09 to wgs84
+        :param lng: 经度
+        :param lat: 纬度
+        :return: 转换后的坐标
+        """
         gcj02 = self.bd09_to_gcj02(lng, lat)
         return self.gcj02_to_wgs84(gcj02[0], gcj02[1])
 
     def coord_transform(self, coord, from_coord_type, to_coord_type, coord_type='str'):
+        """
+        坐标转换
+        :param coord: 坐标
+        :param from_coord_type: 现状坐标系
+        :param to_coord_type: 目标坐标系
+        :param coord_type: 坐标数据类型（str形如'112,32;113,33'；list形如[[112,32],[113,33]]）
+        :return: 转换后的坐标，形如[[112,32],[113,33]]
+        """
         if coord_type == 'str':
             coord_list = [list(map(float, coord.split(','))) for coord in coord.split(';')]
         else:
@@ -126,12 +188,12 @@ if __name__ == '__main__':
     # gcj02转换为wgs84
     lng_wgs84, lat_wgs84 = ct.gcj02_to_wgs84(lng, lat)
     print('gcj02转换为wgs84')
-    print('lng_wgs84:', lng_wgs84, 'lat_wgs84:',lat_wgs84)
+    print('lng_wgs84:', lng_wgs84, 'lat_wgs84:', lat_wgs84)
 
     # wgs84转换为gcj02
     lng_gcj02, lat_gcj02 = ct.wgs84_to_gcj02(lng, lat)
     print('wgs84转换为gcj02')
-    print('lng_gcj02:', lng_gcj02, 'lat_gcj02:',lat_gcj02)
+    print('lng_gcj02:', lng_gcj02, 'lat_gcj02:', lat_gcj02)
 
     # gcj02转换为bd09
     lng_bd09, lat_bd09 = ct.gcj02_to_bd09(lng, lat)
