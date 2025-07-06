@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import requests
 import openrouteservice as ors
@@ -18,6 +19,7 @@ class TrajAcquisitionItem(BaseModel):
     coord_type: str = "gcj02"
     other_params: dict = None
     interpolate_flag: bool = False
+    noise_flag: bool = False
     simulate_flag: bool = True
     result_coord_type: str = "wgs84"
     save_path: str = ""
@@ -28,8 +30,8 @@ class TrajAcquisitionItem(BaseModel):
 
 class TrajAcquisition:
     def __init__(self, origin, destination, way_points="",
-                 method_type="amap", coord_type="gcj02", other_params=None, interpolate_flag=False,
-                 simulate_flag=True, result_coord_type="wgs84",
+                 method_type="amap", coord_type="gcj02", other_params=None, interpolate_flag=False, noise_flag=False,
+                 simulate_flag=False, result_coord_type="wgs84",
                  save_path="", save_name="", result_type="csv", logger=None):
         self.raw_origin = origin
         self.raw_destination = destination
@@ -38,6 +40,11 @@ class TrajAcquisition:
         self.coord_type = coord_type
         self.other_params = other_params
         self.interpolate_flag = interpolate_flag
+        # 默认采样间隔100米
+        self.interpolate_interval = 100
+        self.noise_flag = noise_flag
+        # 默认噪声等级
+        self.noise_level = "low"
         self.simulate_flag = simulate_flag
         self.result_coord_type = result_coord_type
         self.save_path = save_path
@@ -47,6 +54,10 @@ class TrajAcquisition:
 
         self.alternative_methods = ["amap", "baidu", "ors"]
         self.method_coord_info = {"amap": "gcj02", "baidu": "bd09ll", "ors": "wgs84"}
+
+        # 定位精度，与noise_level相关：噪声等级为low，定位精度高，轨迹点偏移范围为20米
+        # 20米为实际的GPS定位点，50米为GPS点 + 精度较高的WIFI定位点，100米为GPS点 + 大部分WIFI定位点
+        self.gps_accuracy_info = {"low": 20, "mid": 50, "high": 100}
 
         self.coordinates = None
         self.result_data = None
@@ -62,6 +73,12 @@ class TrajAcquisition:
                             "final_method_type": self.final_method_type,
                             "result_coord_type": self.result_coord_type,
                             "traj_points": []}
+
+        self.from_crs = CRS('EPSG: 4326')
+        self.to_crs = CRS('EPSG: 32648')
+
+        self.trans_4326 = Transformer.from_crs(self.from_crs, self.to_crs, always_xy=True)
+        self.trans_32648 = Transformer.from_crs(self.to_crs, self.from_crs, always_xy=True)
 
     def __check_input_params(self):
         """
@@ -295,16 +312,8 @@ class TrajAcquisition:
         # 坐标系转换
         coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, 'wgs84', 'list')
 
-        # 指定采样间距
-        sample_interval = 100
-        from_crs = CRS('EPSG: 4326')
-        to_crs = CRS('EPSG: 32648')
-
-        trans_4326 = Transformer.from_crs(from_crs, to_crs, always_xy=True)
-        trans_32648 = Transformer.from_crs(to_crs, from_crs, always_xy=True)
-
         # 地理坐标系转换为投影坐标系
-        points_utm = [trans_4326.transform(lng, lat) for lng, lat in coords]
+        points_utm = [self.trans_4326.transform(lng, lat) for lng, lat in coords]
         line_utm = LineString(points_utm)
         # 给result_data新增distance列
         distance_list = [line_utm.project(Point(point)) for point in points_utm]
@@ -312,9 +321,9 @@ class TrajAcquisition:
 
         resample_data = pd.DataFrame()
         total_length = line_utm.length
-        distance_list = [i * sample_interval for i in range(int(total_length / sample_interval))]
+        distance_list = [i * self.interpolate_interval for i in range(int(total_length / self.interpolate_interval))]
         points_utm = [line_utm.interpolate(distance) for distance in distance_list]
-        points_wgs84 = [trans_32648.transform(point.x, point.y) for point in points_utm]
+        points_wgs84 = [self.trans_32648.transform(point.x, point.y) for point in points_utm]
         resample_data[['lng', 'lat']] = points_wgs84
         resample_data['distance'] = distance_list
         # 指定node_type
@@ -326,6 +335,20 @@ class TrajAcquisition:
         self.result_data.drop_duplicates(subset='distance', keep='first', inplace=True)
         self.result_data.reset_index(drop=True, inplace=True)
         self.result_data.drop(columns='distance', inplace=True)
+
+    def __make_noise(self, tem_coord_type):
+        # 坐标系转换
+        coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, 'wgs84','list')
+        points_utm = [self.trans_4326.transform(lng, lat) for lng, lat in coords]
+
+        # 指定轨迹点采集精度：20（作为正态分布的方差），实际使用时需除以更号2
+        gps_accuracy = self.gps_accuracy_info[self.noise_level] / np.sqrt(2)
+        delta_list = np.random.normal(0, gps_accuracy, [len(coords), 2])
+        # 更新坐标
+        points_utm = delta_list + points_utm
+        # 转换为经纬度
+        points_wgs84 = [self.trans_32648.transform(lng, lat) for lng, lat in points_utm]
+        self.result_data[['lng', 'lat']] = points_wgs84
 
     def __acquire_traj_process(self):
         """
@@ -356,6 +379,11 @@ class TrajAcquisition:
             if self.interpolate_flag:
                 # 插值前需要先将tem_coord_type转换为WGS84
                 self.__enhance_by_interpolate(tem_coord_type)
+                tem_coord_type = 'wgs84'
+
+            # 轨迹点坐标生成噪声（模拟定位精度）
+            if self.noise_flag:
+                self.__make_noise(tem_coord_type)
                 tem_coord_type = 'wgs84'
 
             # 坐标系转换为result_coord_type
@@ -415,6 +443,7 @@ if __name__ == '__main__':
               "method_type": "amap",
               # "coord_type": "bd09ll",
               "other_params": other_params,
+              "simulate_flag": True
               }
     try:
         TrajAcquisitionItem(**inputs)

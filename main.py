@@ -1,6 +1,8 @@
 import os
 from pydantic import ValidationError
 from traj_acquisition.traj_acquisition import TrajAcquisitionItem, TrajAcquisition
+from utils.basic_utils import cal_haversine_dis_vector
+import pandas as pd
 
 import logging
 log_dir = './logs'
@@ -43,18 +45,31 @@ def traj_acquisition_test():
               "other_params": other_params,
               "logger": logger,
               "save_path": save_path,
-              "result_type": "json"
+              "result_type": "json",
+              "simulate_flag": True,
+              "noise_flag": True
               }
 
     try:
         TrajAcquisitionItem(**inputs)
         traj_acquisition = TrajAcquisition(**inputs)
-        traj_acquisition.process()
+        traj_data = traj_acquisition.process()
+        return traj_data
     except ValidationError as e:
         print(e)
-    pass
+        return None
 
 
 if __name__ == '__main__':
-    traj_acquisition_test()
+    traj_info = traj_acquisition_test()
+
+    # 计算相邻点的间距
+    # if traj_info is not None:
+    #     traj_data = pd.DataFrame(traj_info['traj_points'])
+    #     distances = cal_haversine_dis_vector(traj_data)
+    #     print(f'相邻点间距最大值为：{distances.max()}；相邻点间距最小值为：{distances.min()}；相邻点间距平均值为：{distances.mean()}')
+        # 相邻点间距最大值为：1233.2510430506204；相邻点间距最小值为：7.651762599165909；相邻点间距平均值为：135.17579430578658
+        # 可以不抽稀，直接生成噪音
+
+    print('finished')
 
