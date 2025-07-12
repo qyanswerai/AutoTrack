@@ -337,6 +337,11 @@ class TrajAcquisition:
         self.result_data.drop(columns='distance', inplace=True)
 
     def __make_noise(self, tem_coord_type):
+        """
+        轨迹增强（随机生成噪声）：模拟轨迹点采样偏移
+        :param tem_coord_type: 所获取的轨迹的坐标系
+        :return:
+        """
         # 坐标系转换
         coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, 'wgs84','list')
         points_utm = [self.trans_4326.transform(lng, lat) for lng, lat in coords]
