@@ -249,6 +249,57 @@ def cal_direction(data):
         data.loc[stay_segment, 'direction'] = direction
 
 
+def update_direction(data):
+    data["lng_up"] = data["lng"].shift(1)
+    data["lat_up"] = data["lat"].shift(1)
+    data[["lng_up", "lat_up"]] = data[["lng_up", "lat_up"]].bfill()
+    data["direction"] = data.apply(
+        lambda row: cal_bearing(row["lng_up"], row["lat_up"], row["lng"], row["lat"]),
+        axis=1,
+    )
+
+    # 用第2个点的方向角作为第1个点的方向角
+    data.loc[0, "direction"] = data.loc[1, "direction"]
+    data.drop(columns=["lng_up", "lat_up"], inplace=True)
+
+    raw_coordinates = data[["lng", "lat"]].values.tolist()
+    # 若相邻轨迹点经纬度相同，则cal_bearing计算得到的航向角为0，使用两侧的轨迹点坐标重新计算航向角
+    # 记录坐标相同的轨迹点
+    i = 0
+    stay_points = []
+    while i < len(raw_coordinates) - 1:
+        if raw_coordinates[i] == raw_coordinates[i + 1]:
+            stay_points.extend([i, i + 1])
+        i += 1
+
+    stay_segments = split_segment(sorted(set(stay_points)))
+
+    # 更新航向角
+    for stay_segment in stay_segments:
+        up_point = raw_coordinates[max(0, stay_segment[0] - 1)]
+        down_point = raw_coordinates[
+            min(len(raw_coordinates) - 1, stay_segment[-1] + 1)
+        ]
+        direction = cal_bearing(*up_point, *down_point)
+        data.loc[stay_segment, "direction"] = direction
+    return data
+
+
+def update_speed(data):
+    distances = cal_haversine_dis_vector(data)
+    timestamps = data["timestamp"].values / 1000
+    # 计算速度，m/s转换为km/h
+    speeds = distances / (timestamps[1:] - timestamps[:-1]) * 3.6
+    speeds = speeds.round(2)
+    # 速度合理性调整：高于150km/h的轨迹点，设置为150km/h
+    speeds[speeds > 150] = 150
+
+    # 直接指定最后一个轨迹点的速度值
+    speeds = np.append(speeds, speeds[-1])
+    data['speed'] = speeds
+    return data
+
+
 def update_pd_data(data, from_crs="GCJ02", to_crs="WGS84"):
     """
     更新轨迹数据：对经纬度坐标进行坐标系转换
@@ -264,6 +315,81 @@ def update_pd_data(data, from_crs="GCJ02", to_crs="WGS84"):
     result.drop(columns=["lng", "lat"], inplace=True)
     result.rename(columns={"lng_transformed": "lng", "lat_transformed": "lat"}, inplace=True)
     return result
+
+
+def examine_and_update_raw_data(data):
+    # 检查字段是否齐全：id、lng、lat、timestamp、speed、direction
+    missing_fields = {"lng", "lat", "timestamp", "speed", "direction"} - set(data.columns)
+    key_msg = ''
+    available_flag = True
+    if missing_fields:
+        if "lng" in missing_fields or "lat" in missing_fields or "timestamp" in missing_fields:
+            key_msg = f"轨迹数据缺少必要的字段：{missing_fields}。"
+            available_flag = False
+            return available_flag, data, key_msg
+
+        # 若轨迹无direction字段，则重新计算direction
+        if "direction" in missing_fields:
+            key_msg += "轨迹数据航向角不可用，重新生成。"
+            data = update_direction(data)
+        # 若轨迹无speed字段，则重新计算speed
+        if "speed" in missing_fields:
+            key_msg += "轨迹数据速度不可用，重新生成。"
+            data = update_speed(data)
+
+        return available_flag, data, key_msg
+
+    # 若不足20个轨迹点，直接返回
+    if len(data) < 20:
+        key_msg += f"仅{len(data)}个轨迹点，可能会影响算法效果。"
+
+    # 检查是否包含空值
+    if data.isnull().values.any():
+        key_msg += "部分轨迹点缺少必要的字段，删除此类点。"
+        # 删除空值所在的行
+        data = data.dropna()
+
+    # 类型转换
+    data["lng"] = data["lng"].astype(float)
+    data["lat"] = data["lat"].astype(float)
+    data["timestamp"] = data["timestamp"].astype("int64")
+    data["speed"] = data["speed"].astype(float)
+    data["direction"] = data["direction"].astype(float)
+
+    # 对timestamp排序并去重
+    data.sort_values(by=["timestamp"], inplace=True)
+    data.drop_duplicates(subset="timestamp", keep="first", inplace=True)
+    data.reset_index(drop=True, inplace=True)
+
+    return available_flag, data, key_msg
+
+
+def cal_traj_info(data):
+    # 计算相邻点之间的距离
+    distances = cal_haversine_dis_vector(data)
+
+    # 计算轨迹总长度
+    total_length = round(distances.sum() / 1000, 3)
+    # 确定两点间的最大距离
+    max_missing_length = round(max(distances) / 1000, 3)
+    # 筛选出距离大于5km的点对，并计算累计长度
+    total_missing_length = round(distances[distances >= 5000].sum() / 1000, 3)
+
+    # 计算缺失段所占比例
+    missing_rate = round(total_missing_length / total_length, 3)
+
+    # 计算平均采样间隔：相邻点时间间隔的平均值
+    timestamps = data["timestamp"].values
+    mean_time_interval = round((timestamps[1:] - timestamps[:-1]).mean() / 1000, 3)
+
+    # 返回轨迹里程、采样间隔、最大缺失段长度、不低于5km的缺失段累计长度及所占比例
+    traj_info = {'total_mileage': total_length,
+                 'mean_time_interval': mean_time_interval,
+                 "max_missing_length": max_missing_length,
+                 "total_missing_length": total_missing_length,
+                 "missing_rate": missing_rate
+                 }
+    return traj_info
 
 
 if __name__ == '__main__':
