@@ -250,6 +250,11 @@ def cal_direction(data):
 
 
 def update_direction(data):
+    """
+    生成（根据经纬度计算）、更新轨迹点的航向角
+    :param data: 轨迹数据
+    :return: 更新后的轨迹数据
+    """
     data["lng_up"] = data["lng"].shift(1)
     data["lat_up"] = data["lat"].shift(1)
     data[["lng_up", "lat_up"]] = data[["lng_up", "lat_up"]].bfill()
@@ -286,6 +291,11 @@ def update_direction(data):
 
 
 def update_speed(data):
+    """
+    生成（根据经纬度计算）、更新轨迹点的速度
+    :param data: 轨迹数据
+    :return: 更新后的轨迹数据
+    """
     distances = cal_haversine_dis_vector(data)
     timestamps = data["timestamp"].values / 1000
     # 计算速度，m/s转换为km/h
@@ -318,7 +328,13 @@ def update_pd_data(data, from_crs="GCJ02", to_crs="WGS84"):
 
 
 def examine_and_update_raw_data(data):
-    # 检查字段是否齐全：id、lng、lat、timestamp、speed、direction
+    """
+    # 检查轨迹数据的字段是否齐全：lng、lat、timestamp、speed、direction
+    若缺少lng、lat、timestamp则报错；若缺少speed、direction则根据经纬度生成
+    :param data: 轨迹数据
+    :return: 轨迹数据是否可用，轨迹数据，关键信息
+    """
+
     missing_fields = {"lng", "lat", "timestamp", "speed", "direction"} - set(data.columns)
     key_msg = ''
     available_flag = True
@@ -365,6 +381,11 @@ def examine_and_update_raw_data(data):
 
 
 def cal_traj_info(data):
+    """
+    分析轨迹关键信息：轨迹里程、采样间隔、最大缺失段长度、不低于5km的缺失段累计长度及所占比例
+    :param data: 轨迹数据
+    :return: 轨迹关键信息
+    """
     # 计算相邻点之间的距离
     distances = cal_haversine_dis_vector(data)
 
