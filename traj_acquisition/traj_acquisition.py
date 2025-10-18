@@ -87,13 +87,12 @@ class TrajAcquisition:
         """
         # 对起终点进行检查：是否包含经纬度（不检查经度在前还是维度在前）
         if not isinstance(self.raw_origin, str) or len(self.raw_origin.split(',')) != 2:
-            self.logger.error("The origin is incorrect, longitude and latitude should be divided by ','")
-            raise Exception("The origin is incorrect, "
-                            "Longitude first, latitude last, longitude and latitude are divided by ','")
+            self.logger.error("起点坐标格式不正确，先经度后纬度，坐标之间应该使用','分隔")
+            raise Exception("起点坐标格式不正确，先经度后纬度，坐标之间应该使用','分隔")
 
         if not isinstance(self.raw_destination, str) or len(self.raw_destination.split(',')) != 2:
-            self.logger.error("The destination is incorrect, longitude and latitude should be divided by ','")
-            raise Exception("The destination is incorrect, longitude and latitude should be divided by ','")
+            self.logger.error("终点坐标格式不正确，先经度后纬度，坐标之间应该使用','分隔")
+            raise Exception("终点坐标格式不正确，先经度后纬度，坐标之间应该使用','分隔")
 
         # 检查坐标点是否在国内：先进行坐标转换gcj02/bd09ll-->wgs84
         in_china = True
@@ -123,16 +122,16 @@ class TrajAcquisition:
             # 若不在国内，则使用ORS方法
             self.method_type = 'ors'
             self.alternative_methods = ['ors']
-            self.logger.warning("The origin or destination is not in China, only ors method available")
+            self.logger.warning("起点或终点不在中国国内，只能使用 ORS 获取轨迹坐标")
             # raise Exception("The origin is not in China")
 
         if self.coord_type not in ['wgs84', 'gcj02', 'bd09ll']:
-            self.logger.error(f"{self.coord_type} is not supported")
-            raise Exception(f"{self.coord_type} is not supported")
+            self.logger.error(f"{self.coord_type} 不被支持")
+            raise Exception(f"{self.coord_type} 不被支持")
 
         if self.method_type not in ['ors', 'amap', 'baidu']:
-            self.logger.error(f"{self.method_type} is not supported")
-            raise Exception(f"{self.method_type} is not supported")
+            self.logger.error(f"{self.method_type} 不被支持")
+            raise Exception(f"{self.method_type} 不被支持")
 
     def __transform_input_coord(self):
         """
@@ -222,8 +221,8 @@ class TrajAcquisition:
             print(len(coors_list))
             self.result_data = coors_list
         except Exception as e:
-            print('Failed to get shortest path using ORS')
-            self.logger.error(f'Failed to get shortest path using ORS: {e}')
+            print('ORS 获取路径失败')
+            self.logger.error(f'ORS 获取路径失败: {e}')
             # raise Exception(e)
 
     def __acquire_traj_amap(self):
@@ -264,8 +263,8 @@ class TrajAcquisition:
                     print(response["info"])
 
         except Exception as e:
-            print('Failed to get shortest path using amap')
-            self.logger.error(f'Failed to get shortest path using amap: {e}')
+            print('amap 获取路径失败')
+            self.logger.error(f'amap 获取路径失败: {e}')
             # raise Exception(e)
 
     def __acquire_traj_baidu(self):
@@ -299,8 +298,8 @@ class TrajAcquisition:
                 print(len(coors_list))
                 self.result_data = coors_list
         except Exception as e:
-            print('Failed to get shortest path using baidu')
-            self.logger.error(f'Failed to get shortest path using baidu: {e}')
+            print('baidu 获取路径失败')
+            self.logger.error(f'baidu 获取路径失败: {e}')
             # raise Exception(e)
 
     def __enhance_by_interpolate(self, tem_coord_type):
@@ -395,7 +394,7 @@ class TrajAcquisition:
             coords = CoordinatesTransform().coord_transform(self.result_data.values.tolist(), tem_coord_type, self.result_coord_type, 'list')
             self.result_data[['lng', 'lat']] = coords
             self.result_info["final_method_type"] = self.final_method_type
-            self.logger.info(f"final method type: {self.final_method_type}")
+            self.logger.info(f"获取轨迹的方法最终为：{self.final_method_type}")
 
             return True
         else:
@@ -409,12 +408,12 @@ class TrajAcquisition:
         try:
             # 根据method_type检查参数
             self.__check_input_params()
-            self.logger.info("input params has been checked")
+            self.logger.info("已检查输入")
 
             # 调用API或者库函数，获取轨迹点坐标lng、lat
             acquired_flag = self.__acquire_traj_process()
             if acquired_flag:
-                self.logger.info("trajectory has been acquired successfully")
+                self.logger.info("成功获取轨迹")
 
                 # 计算direction
                 cal_direction(self.result_data)
@@ -430,8 +429,8 @@ class TrajAcquisition:
                 # 保存轨迹信息（保存为pd、json文件）
                 save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
         except Exception as e:
-            print(f"trajectory acquisition has failed: {e}")
-            self.logger.error(f"trajectory acquisition has failed: {e}")
+            print(f"轨迹获取失败: {e}")
+            self.logger.error(f"轨迹获取失败: {e}")
 
         return self.result_info
 

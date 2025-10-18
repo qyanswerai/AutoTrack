@@ -2,9 +2,21 @@ import os
 import json
 import numpy as np
 import pandas as pd
-
+from pydantic import BaseModel, ValidationError
 from utils.basic_utils import (cal_haversine_dis, cal_haversine_dis_vector,
                                examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson)
+
+
+class DenoisingItem(BaseModel):
+    data_path: str
+    data_name: str
+    data_type: str = "json"
+    coord_type: str = "wgs84"
+    save_path: str = ""
+    save_type: str = "json"
+    denoising_level: str = "low"
+    data_info: object = None
+    logger: object = None
 
 
 class Denoising(object):
@@ -45,6 +57,7 @@ class Denoising(object):
                 self.data = json.load(f)
                 self.result_info = self.data
                 if "type" not in self.data and self.data["type"] != "FeatureCollection":
+                    self.logger.error("轨迹数据为json格式，但不符合geojson的字段标准")
                     raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
                 self.data_info = self.data["meta"]
                 # 确定轨迹点坐标信息
@@ -69,18 +82,22 @@ class Denoising(object):
                 self.data_info = {}
             self.result_info = pd_to_geojson(self.pd_data, self.data_info)
         else:
-            raise Exception('暂不支持该类轨迹文件，请转换为json或csv格式')
+            self.logger.error("暂不支持该类轨迹文件，请转换为json或csv格式")
+            raise Exception("暂不支持该类轨迹文件，请转换为json或csv格式")
 
-        # self.pd_data = self.pd_data[['lng', 'lat', 'timestamp']]
         # 检查轨迹数据：关键字段
         available_flag, self.pd_data, key_msg = examine_and_update_raw_data(self.pd_data)
 
         # 分情况处理轨迹信息
         if available_flag:
+            if key_msg != '':
+                self.logger.warning(f"轨迹数据存在异常（不影响噪点识别）：{key_msg}")
             # 转换为WGS84坐标系
             if self.coord_type != "wgs84":
+                self.logger.info(f"转换坐标系：{self.coord_type} 转换为 wgs84")
                 self.pd_data = update_pd_data(self.pd_data, self.coord_type)
         else:
+            self.logger.error(f"轨迹数据存在异常：{key_msg}")
             raise Exception(f'轨迹数据存在异常：{key_msg}')
 
 
@@ -118,10 +135,12 @@ class Denoising(object):
 
         if len(noise_list) == 0:
             print("未识别到噪点")
+            self.logger.info("未识别到噪点")
             self.data_info["noise_info"] = {"noise_num": len(noise_list)}
             return
         else:
             print(f"识别到{len(noise_list)}个噪点，信息如下：")
+            self.logger.info(f"识别到{len(noise_list)}个噪点")
             self.data_info["noise_info"] = {"noise_num": len(noise_list),
                                             "noise_points": self.pd_data.iloc[noise_list].to_dict(orient='records')}
 
@@ -144,14 +163,14 @@ class Denoising(object):
         try:
             # 读取轨迹数据并检查
             self.__read_examine_update_traj()
-
+            self.logger.info("input params has been checked")
             # 计算轨迹基础信息
             traj_info = cal_traj_info(self.pd_data)
             self.data_info["traj_info"] = traj_info
 
             # 识别噪点并剔除
             self.__denoising_core()
-
+            self.logger.info("trajectory noise points has been detected successfully")
             if self.save_path != "":
                 # 结果保存为geojson格式，噪点信息放在meta字段中
                 file_path = os.path.join(self.save_path, self.data_name.split('.')[0] + '_denoising.json')
@@ -159,8 +178,8 @@ class Denoising(object):
                     # 使用json.dump()方法将feature_collection对象写入文件
                     json.dump(self.result_info, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print(f"trajectory denoising has failed: {e}")
-            # self.logger.error(f"trajectory denoising has failed: {e}")
+            print(f"轨迹降噪失败: {e}")
+            self.logger.error(f"轨迹降噪失败: {e}")
 
         return self.result_info
 
