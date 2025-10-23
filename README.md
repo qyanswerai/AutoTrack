@@ -1,19 +1,27 @@
-﻿**轨迹数据**对于分析车辆历史或实时的行驶状况至关重要，其核心字段包括**经纬度坐标、时间戳、速度、航向角**等
+﻿# 序：AutoTrack
 
-[AutoTraj库的【轨迹获取模块】](https://github.com/qyanswerai/AutoTraj)能够生成字段齐全的轨迹数据
-**项目地址：[https://github.com/qyanswerai/AutoTraj](https://github.com/qyanswerai/AutoTraj)**
+**轨迹数据**对于分析车辆历史或实时的行驶状况至关重要，其核心字段包括**经纬度坐标、时间戳、速度、航向角**等
 
-![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/725320cf16294652a3eddd48d8a8ce29.png#pic_center)
+[AutoTrack](https://github.com/qyanswerai/AutoTrack)提供了轨迹获取、轨迹降噪、轨迹抽稀、轨迹纠偏（待更新）、轨迹异常行为识别（待更新）等功能，各个模块可单独调用也可链式调用
 
-**【核心功能说明】**
+![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/589fd07ed55a45db8a04ec3f9bfaea27.png#pic_center)
 
-- **【获取经纬度】**：给定起点、终点坐标，调用高德、百度、`OpenRouteService`（简称`amap`、`baidu`、`ors`）的相关接口或方法获取起终点之间的路线（路线上各个点的经纬度坐标）
-- **【计算航向角】**：根据相邻点的坐标采用公式计算`direction`，正北为0，顺时针递增（0~360.0）
-- **【生成速度及时间戳】**：进一步通过行驶状态模拟生成速度、时间戳字段，得到字段齐全的轨迹点，可用于轨迹分析（例如识别停留、低速段），轨迹重合率计算等
 
-# 一、输入及输出
+- [【轨迹获取模块】](https://blog.csdn.net/weixin_42639395/article/details/146050157?fromshare=blogdetail&sharetype=blogdetail&sharerId=146050157&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)：根据点的坐标调用路径规划API生成字段齐全的轨迹数据
+  - **【获取经纬度】**：给定起点、终点坐标，调用高德、百度、`OpenRouteService`（简称`amap`、`baidu`、`ors`）的相关接口或方法获取起终点之间的路线（路线上各个点的经纬度坐标）
+  - **【计算航向角】**：根据相邻点的坐标采用公式计算`direction`，正北为0，顺时针递增（0~360.0）
+  - **【生成速度及时间戳】**：进一步通过行驶状态模拟生成速度、时间戳字段，得到字段齐全的轨迹点，可用于轨迹分析（例如识别停留、低速段），轨迹重合率计算等
+- [【轨迹降噪模块】](https://blog.csdn.net/weixin_42639395/article/details/148025371?fromshare=blogdetail&sharetype=blogdetail&sharerId=148025371&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)：根据点的距离分布（基于距离阈值的“两次判断“）识别噪点
+  - **【噪点初筛】：若相邻轨迹点的间距大于等于【距离阈值】，则认为是噪点**（进一步判断）
+  - **【噪点二次判断】：对于相邻的噪点路段，计算“轴向间距”，若两个噪点路段的长度均大于等于“轴向间距”与【倍数阈值】的乘积，则认为是噪点**
+  - 通过设置【距离阈值】及【倍数阈值】可以调整降噪强度（阈值越小降噪强度越大）
+  - **两次判断**能够避免将隧道附近的缺失以及轨迹采集设备造成的长距离缺失当作噪点
 
-## 1.1、输入及示例
+# 1、轨迹获取
+
+## 1.1、输入及输出
+
+### 1.1.1、输入及示例
 
 | 参数名            | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
 | ----------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
@@ -65,9 +73,7 @@
 - 若不匹配则需转换坐标系（自动完成）：例如`method_type`为`amap`，`coord_type`为`wgs84`，则坐标系先转换为`gcj02`再调用`API`获取轨迹
 - 若起点`origin`或终点`destination`不在国内，则`method_type`只能为`ors`（入参检查时会自动转换）
 
-## 1.2、输出及示例
-
-
+### 1.1.2、输出及示例
 
 | 参数名            | 类型  | 是否必填 | 含义       | 说明                                                         | 默认值            |
 | ----------------- | ----- | -------- | ---------- | ------------------------------------------------------------ | ----------------- |
@@ -101,9 +107,10 @@
 }
 ```
 
-# 二、流程详解
 
-## 2.1、轨迹获取
+## 1.2、模块功能详解
+
+### 1.2.1、轨迹获取
 
 **【准备工作】**：获取密钥，修改`config.ini`
 
@@ -127,7 +134,7 @@
 
 **【获取输出】**：参照输出字段说明及示例
 
-## 2.2、轨迹增强（噪声）
+### 1.2.2、轨迹增强（噪声）
 
 通过调用路径规划接口获取轨迹点，轨迹点准确落在道路上，**为了更接近实际采集的轨迹点（坐标漂移：采集到的坐标与采集时实际坐标存在偏差），需要对获取的轨迹点进行坐标增强（给获取的坐标增加噪声，模拟坐标漂移）**
 
@@ -151,14 +158,14 @@
 
 
 
-### 2.2.1、使用geopy库
+#### 【使用geopy库】
 
 - 使用**正态分布**生成随机值表示要移动的距离（需保证距离不小于0）
 - 使用**均值分布**生成随机值表示要移动的角度（角度值为0~360）
 - 根据距离、角度直接确定移动后的坐标
   ![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/6c1ae2591ff04217b0de4cc2dab40cba.png)
 
-### 2.2.2、基于坐标转换
+#### 【基于坐标转换】
 
 - 经纬度坐标转换为平面坐标x、y
 - 使用**正态分布**生成随机值表示x、y分别要移动的距离
@@ -167,9 +174,9 @@
 
 
 
-## 2.3、字段补全
+### 1.2.3、字段补全
 
-### 2.3.1、字段补全思路
+#### 【字段补全思路】
 
 通过调用路径规划接口能获取轨迹点的坐标（`lng`、`lat`），根据坐标字段可以计算航向角（`direction`），但是还缺少时间戳、速度字段（`timestamp`、`speed`），本算法通过**车辆行驶状态模拟**得到
 
@@ -183,7 +190,7 @@
   - 根据相邻点坐标采用公式计算距离，以两个点的速度均值作为路段的速度（若速度为0，则时间戳直接增加10秒），根据距离、速度计算路段的行程时间，进而得到时间戳
   - 重复执行，确定所有轨迹点的时间戳
 
-### 2.3.2、速度生成
+#### 【速度生成】
 
 为了**精细化模拟车辆行驶状态**，**将车辆状态细分为速度状态、加速度状态**
 
@@ -222,12 +229,14 @@
 }
 ```
 
-![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/0ad06031a70e4ef5b82aded5b34f2794.png)
+
+<img src="https://i-blog.csdnimg.cn/direct/0ad06031a70e4ef5b82aded5b34f2794.png" alt="在这里插入图片描述" style="zoom:67%;" />
 
 以300个轨迹点为例，生成的速度值如下图所示：
-![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/bdc332facc7f494bacc076c806d87d7b.png)
 
-## 2.4、轨迹可视化
+<img src="https://i-blog.csdnimg.cn/direct/bdc332facc7f494bacc076c806d87d7b.png" alt="在这里插入图片描述" style="zoom:67%;" />
+
+### 1.2.4、轨迹可视化
 
 读取轨迹文件，使用`folium`库绘制轨迹
 
@@ -245,38 +254,134 @@
   - 轨迹数据的坐标系为`wgs84`时（使用`OpenStreetMap`作为底图），可能加载失败，建议转换为其他坐标系再尝试绘图
   - 可视化结果为与`file_name`相同的`html`文件，可使用浏览器打开
 
-# 三、补充说明
 
-## 3.1、时间戳
 
-**！！！重要！！！**
+# 2、轨迹降噪
 
-- 对于轨迹数据，时间戳是非常重要的字段，仅次于坐标字段
+## 2.1、输入及输出
 
-- 为了避免时间戳转换的风险（需考虑时区），建议处理及存储时始终使用`Unix`格式（13位，精确到毫秒），而不是转换为`'%Y-%m%-d %H:%M:%S'`等形式
+### 2.1.1、输入及示例
 
-## 3.2、Geojson
+| 参数名          | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
+| --------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
+| data_path       | str  | 是       | 轨迹文件路径 | 默认放置在data/raw_data文件夹下                              |        |
+| data_name       | str  | 是       | 轨迹文件名称 | 需进行降噪处理的轨迹文件，需要符合命名规范                   |        |
+| data_type       | str  | 否       | 轨迹文件类型 | 文件类型：表格型csv、字典型json                              | json   |
+| data_info       | dict | 否       | 轨迹相关信息 | 例如轨迹起点坐标、终点坐标等                                 | None   |
+| coord_type      | str  | 否       | 坐标系       | 轨迹数据的坐标系：wgs84、gcj02、bd09ll，降噪后的轨迹坐标系会强制转换为wgs84 | wgs84  |
+| save_path       | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
+| save_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | json   |
+| denoising_level | str  | 否       | 降噪强度     | 弱(low)、中(mid)、强(high)  ，降噪强度越大，识别到的噪点越多 | low    |
 
-相关链接：[https://leafletjs.com/examples/geojson/](https://leafletjs.com/examples/geojson/)
 
-一个典型的`Geojson`文件包含一个要素集合对象，用于表示一组相关的地理要素
+```json
+{
+    "data_path": r"data/raw_data",
+    "data_name": "孤立噪点.json",
+    "data_type": "json",
+    "data_info": {
+        "origin_name": "上海市人民广场",
+        "destination_name": "北京市天安门广场"
+    },
+    "coord_type": "gcj02",
+    "save_path": r"data/result_data",
+    "save_type": "json",
+    "denoising_level": "low"
+}
+```
 
-- 可以在`meta`（非必要）中设置要素集合对象的相关属性
-- 要素集合对象必须包含`type`（值为 `FeatureCollection`）和`features`（要素对象数组）
-  - `features`中可以记录点`Point`、线`LineString`等信息
-  - `type`（值为`Feature`）和`geometry`（地理属性）是必要的，其他信息可以放在`properties`中
 
-一个可用于轨迹可视化的`Geojson`文件如下所示（包含起点、终点、轨迹线）：
-[https://github.com/qyanswerai/AutoTraj/blob/master/data/result_data/gps_data/1745330067766.html](https://github.com/qyanswerai/AutoTraj/blob/master/data/result_data/gps_data/1745330067766.html)
 
-## 3.3、Folium
+【入参说明】
 
-> **使用`Folium`进行轨迹的可视化：绘制轨迹、起终点、增加测距功能等（简单的交互）**
->
-> - **要求坐标系为`WGS84`**
-> - **纬度在前，经度在后**
+- 若给定`save_path`且成功降噪，则保存降噪后的轨迹文件
+  - 若`data_name`为“孤立噪点.json”，则降噪后的轨迹文件为“孤立噪点_denoising.json”
+  - 降噪后的轨迹坐标系均转换为`wgs84`
+- `denoising_level`影响噪点识别相关的阈值，`high`与`low`相比，阈值更“小”更容易触发，能识别到更多噪点
 
-相关教程：[【python交互式地图数据可视化神器folium】](https://www.bilibili.com/video/BV1t3411A7Z8/?share_source=copy_web&vd_source=c71860a35ae6f457f141a44ee4b38133) 
+### 2.1.2、输出及示例
 
-示例代码：[https://github.com/qyanswerai/AutoTraj/blob/master/utils/draw_traj.py](https://github.com/qyanswerai/AutoTraj/blob/master/utils/draw_traj.py)
+降噪后的轨迹以`Geojson`格式返回，噪点信息保存在`meta--noise_info`中
+
+- `noise_num`：噪点数量
+- `noise_points`：噪点信息，包括坐标、时间戳、速度等
+
+`Geojson`相关信息详见：[GPS轨迹生成：基于AutoTraj库【轨迹获取模块】（3.2 补充说明）](https://blog.csdn.net/weixin_42639395/article/details/146050157?fromshare=blogdetail&sharetype=blogdetail&sharerId=146050157&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)
+
+
+```json
+{
+    "type": "FeatureCollection",
+    "meta": {
+        "start_point": {
+            "lng": 120.201697,
+            "lat": 36.140966,
+            "timestamp": "1732239164000"
+        },
+        "end_point": {
+            "lng": 120.353688,
+            "lat": 36.166415,
+            "timestamp": "1732239854000"
+        },
+        "start_time": "1732239164000",
+        "end_time": "1732239854000",
+        "traj_info": {
+            "total_mileage": 49.961,
+            "mean_time_interval": 34.5,
+            "max_missing_length": 20.857,
+            "total_missing_length": 38.7,
+            "missing_rate": 0.775
+        },
+        "noise_info": {
+            "noise_num": 1,
+            "noise_points": [
+                {
+                    "lng": 120.456342,
+                    "lat": 36.251362,
+                    "timestamp": 1732239464000,
+                    "direction": 27.0,
+                    "speed": 35.9
+                }
+            ]
+        }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [120.201697, 36.140966],
+                    [120.208022, 36.143974],
+                    [120.214304, 36.146953],
+                    ...
+                ]
+            },
+            "properties": {
+                "timestamps": [
+                    1732239164000, 1732239194000, 1732239224000,...
+                ],
+                "speeds": [
+                    81.3, 76.8, 78.7,...
+                ],
+                "directions": [
+                    59.0, 59.0, 59.0,...
+                ]
+         }
+    ]
+}           
+```
+
+
+
+## 2.2、模块功能详解
+
+**【给定输入】**：参照输入字段说明及示例
+
+【轨迹获取主流程】：`main.py`接收输入，调用`traj_noising`模块的`denoising.py`
+
+- 根据指定的`data_type`解析轨迹数据，调用算法识别并剔除噪点，返回降噪后的轨迹（同时保存一份`Geojson`格式的轨迹文件）
+- 调整`denoising_level`可控制算法阈值，从而控制降噪效果
+
+**【获取输出】**：参照输出字段说明及示例
 
