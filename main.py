@@ -5,6 +5,7 @@ from utils.basic_utils import cal_haversine_dis_vector
 import pandas as pd
 
 from traj_denoising.denoising import Denoising, DenoisingItem
+from traj_simplify.simplify import Simplify, SimplifyItem
 
 import logging
 log_dir = './logs'
@@ -96,6 +97,39 @@ def traj_denoising_test():
         print(e)
         return None
 
+def traj_simplify_test():
+    """
+    测试轨迹降噪功能
+    :return:
+    """
+    path = r'data/raw_data'
+    save_path = r'data/result_data'
+
+    # 【孤立噪点】
+    file = '孤立噪点.json'
+
+    # 【多个噪点集中分布】
+    # file = '多个噪点集中分布_1.json'
+    # file = '多个噪点集中分布_2.json'
+
+    # 【多个噪点反复横跳】
+    # file = '多个噪点反复横跳.json'
+
+    inputs = {"data_path": path, "data_name": file, "save_path": save_path, 'simplify_mode': 'rdp', "logger": logger}
+
+    # file = '孤立噪点.csv'
+    # inputs = {'data_path': path, 'data_name': file, 'save_path': save_path, 'data_type': 'csv'}
+
+    try:
+        # 虽然logger不是必需字段，但是为了代码正常执行需要传入
+        SimplifyItem(**inputs)
+        traj_simplify = Simplify(**inputs)
+        traj_data = traj_simplify.process()
+        return traj_data
+    except ValidationError as e:
+        print(e)
+        return None
+
 
 if __name__ == '__main__':
     # 测试轨迹获取功能
@@ -110,7 +144,10 @@ if __name__ == '__main__':
         # 可以不抽稀，直接生成噪音
 
     # 测试轨迹降噪功能
-    traj_info = traj_denoising_test()
+    # traj_info = traj_denoising_test()
+
+    # 测试轨迹抽稀功能
+    traj_info = traj_simplify_test()
 
     print('finished')
 

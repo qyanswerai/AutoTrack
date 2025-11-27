@@ -163,14 +163,14 @@ class Denoising(object):
         try:
             # 读取轨迹数据并检查
             self.__read_examine_update_traj()
-            self.logger.info("input params has been checked")
+            self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息
             traj_info = cal_traj_info(self.pd_data)
             self.data_info["traj_info"] = traj_info
 
             # 识别噪点并剔除
             self.__denoising_core()
-            self.logger.info("trajectory noise points has been detected successfully")
+            self.logger.info("轨迹降噪成功")
             if self.save_path != "":
                 # 结果保存为geojson格式，噪点信息放在meta字段中
                 file_path = os.path.join(self.save_path, self.data_name.split('.')[0] + '_denoising.json')
