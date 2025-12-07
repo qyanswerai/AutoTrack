@@ -71,8 +71,7 @@ class TrajAcquisition:
                             "destination": self.raw_destination,
                             "way_points": self.raw_way_points,
                             "final_method_type": self.final_method_type,
-                            "result_coord_type": self.result_coord_type,
-                            "traj_points": []}
+                            "result_coord_type": self.result_coord_type}
 
         self.from_crs = CRS('EPSG: 4326')
         self.to_crs = CRS('EPSG: 32648')
@@ -423,16 +422,15 @@ class TrajAcquisition:
                     driving_state_simulate = DrivingStateSimulate(self.result_data)
                     self.result_data = driving_state_simulate.process()
 
-                # 更新result_info
-                self.result_info["traj_points"] = self.result_data.to_dict(orient="records")
-
                 # 保存轨迹信息（保存为pd、json文件）
-                save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
+                json_data = save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
+                return json_data
+            else:
+                return None
         except Exception as e:
             print(f"轨迹获取失败: {e}")
             self.logger.error(f"轨迹获取失败: {e}")
-
-        return self.result_info
+            return None
 
 
 if __name__ == '__main__':

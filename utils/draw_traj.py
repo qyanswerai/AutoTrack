@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import folium
 from folium.plugins import MeasureControl
+from utils.basic_utils import geojson_to_pd
 
 
 class DrawGPS:
@@ -13,8 +14,6 @@ class DrawGPS:
         self.data_type = data_type
         self.coord_type = coord_type
 
-        # 记录是否为geojson文件
-        self.geojson_flag = False
         self.data = None
         self.pd_data = None
         # 可视化地图的初始化视角位置
@@ -25,7 +24,7 @@ class DrawGPS:
 
         # 解析文件，并确定coord_type
         file_path = os.path.join(self.path, self.file_name + '.' + self.data_type)
-        if "json" == data_type:
+        if "json" == self.data_type:
             with open(file_path, encoding='utf-8') as f:
                 self.data = json.load(f)
 
@@ -33,11 +32,11 @@ class DrawGPS:
                 self.geojson_flag = True
                 self.coord_type = self.data["meta"]["result_coord_type"]
                 self.view_point = [self.data["meta"]["start_point"]["lat"], self.data["meta"]["start_point"]["lng"]]
+                self.pd_data, _ = geojson_to_pd(self.data)
             else:
-                self.coord_type = self.data["result_coord_type"]
-                # 转换为dataframe，方便绘图
-                self.pd_data = pd.DataFrame(self.data["traj_points"])
-                self.view_point = self.pd_data.iloc[0][['lat', 'lng']].values
+                print("轨迹数据为json格式，但不符合geojson的字段标准")
+                raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
+
         else:
             self.data = pd.read_csv(file_path)
             self.pd_data = self.data.copy(deep=True)
@@ -62,26 +61,25 @@ class DrawGPS:
         绘制轨迹、起终点
         :return:
         """
-        if self.geojson_flag:
-            # 使用GeoJson直接绘图，不能灵活设置图层、样式（不建议使用）
-            folium.GeoJson(self.data, name='gps', color='blue', weight=2.5, opacity=0.8).add_to(self.m)
-        # csv格式的轨迹数据及普通的json格式的轨迹数据采用一套绘图逻辑
-        else:
-            # 绘制轨迹
-            trajectory_layer = folium.FeatureGroup(name="gps").add_to(self.m)
-            folium.PolyLine(locations=self.pd_data[['lat', 'lng']].values, color='blue', weight=2.5,
-                            opacity=0.8).add_to(trajectory_layer)
+        # 使用GeoJson直接绘图，不能灵活设置图层、样式（不建议使用）
+        # if "json" == self.data_type:
+        #     folium.GeoJson(self.data, name='gps', color='blue', weight=2.5, opacity=0.8).add_to(self.m)
 
-            # 添加起点、终点
-            origin_layer = folium.FeatureGroup(name="origin").add_to(self.m)
-            folium.CircleMarker(location=self.pd_data.iloc[0][['lat', 'lng']].values,
-                                radius=5, color='yellow', fill=True, fill_color='yellow', fill_opacity=0.6,
-                                popup="起点").add_to(origin_layer)
+        # 绘制轨迹
+        trajectory_layer = folium.FeatureGroup(name="gps").add_to(self.m)
+        folium.PolyLine(locations=self.pd_data[['lat', 'lng']].values, color='blue', weight=2.5,
+                        opacity=0.8).add_to(trajectory_layer)
 
-            destination_layer = folium.FeatureGroup(name="destination").add_to(self.m)
-            folium.CircleMarker(location=self.pd_data.iloc[-1][['lat', 'lng']].values,
-                                radius=5, color='yellow', fill=True, fill_color='yellow', fill_opacity=0.6,
-                                popup="终点").add_to(destination_layer)
+        # 添加起点、终点
+        origin_layer = folium.FeatureGroup(name="origin").add_to(self.m)
+        folium.CircleMarker(location=self.pd_data.iloc[0][['lat', 'lng']].values,
+                            radius=5, color='yellow', fill=True, fill_color='yellow', fill_opacity=0.6,
+                            popup="起点").add_to(origin_layer)
+
+        destination_layer = folium.FeatureGroup(name="destination").add_to(self.m)
+        folium.CircleMarker(location=self.pd_data.iloc[-1][['lat', 'lng']].values,
+                            radius=5, color='yellow', fill=True, fill_color='yellow', fill_opacity=0.6,
+                            popup="终点").add_to(destination_layer)
 
     def process(self):
         """
@@ -105,8 +103,7 @@ class DrawGPS:
 if __name__ == '__main__':
     path = '../data/result_data'
     save_path = '../data/result_data/gps_data'
-    # file_name = '1743080918402'
-    file_name = '1745330067766'
+    file_name = '1760787874584_geojson'
 
     params = {"path": path, "save_path": save_path, "file_name": file_name, "data_type": "json", "coord_type": "wgs84"}
     # 绘制轨迹

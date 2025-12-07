@@ -133,7 +133,7 @@ def traj_simplify_test():
 
 if __name__ == '__main__':
     # 测试轨迹获取功能
-    # traj_info = traj_acquisition_test()
+    traj_info = traj_acquisition_test()
 
     # 计算相邻点的间距
     # if traj_info is not None:
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     # traj_info = traj_denoising_test()
 
     # 测试轨迹抽稀功能
-    traj_info = traj_simplify_test()
+    # traj_info = traj_simplify_test()
 
     print('finished')
 

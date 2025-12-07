@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ValidationError
 from utils.basic_utils import (cal_haversine_dis, cal_haversine_dis_vector,
-                               examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson)
+                               examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson, geojson_to_pd)
 
 
 class DenoisingItem(BaseModel):
@@ -60,18 +60,8 @@ class Denoising(object):
                     self.logger.error("轨迹数据为json格式，但不符合geojson的字段标准")
                     raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
                 self.data_info = self.data["meta"]
-                # 确定轨迹点坐标信息
-                for feature in self.data["features"]:
-                    if feature["geometry"]["type"] == "LineString":
-                        self.coordinates = np.array(feature["geometry"]["coordinates"])
-                        self.pd_data = pd.DataFrame(self.coordinates, columns=["lng", "lat"])
 
-                        if 'timestamps' in feature['properties']:
-                            self.pd_data['timestamp'] = feature['properties']['timestamps']
-                        if 'directions' in feature['properties']:
-                            self.pd_data['direction'] = feature['properties']['directions']
-                        if 'speeds' in feature['properties']:
-                            self.pd_data['speed'] = feature['properties']['speeds']
+                self.pd_data, self.coordinates = geojson_to_pd(self.data)
 
         elif self.data_type == "csv":
             self.data = pd.read_csv(os.path.join(self.data_path, self.data_name))
