@@ -82,7 +82,7 @@ class Denoising(object):
         if available_flag:
             if key_msg != '':
                 self.logger.warning(f"轨迹数据存在异常（不影响噪点识别）：{key_msg}")
-            # 转换为WGS84坐标系
+            # 转换为wgs84坐标系（结果默认为wgs84坐标系）
             if self.coord_type != "wgs84":
                 self.logger.info(f"转换坐标系：{self.coord_type} 转换为 wgs84")
                 self.pd_data = update_pd_data(self.pd_data, self.coord_type)

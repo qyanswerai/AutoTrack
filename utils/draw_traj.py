@@ -30,7 +30,9 @@ class DrawGPS:
 
             if "type" in self.data and self.data["type"] == "FeatureCollection":
                 self.geojson_flag = True
-                self.coord_type = self.data["meta"]["result_coord_type"]
+                # 以轨迹文件中的coord_type为准
+                if "generate_info" in self.data["meta"]:
+                    self.coord_type = self.data["meta"]["generate_info"]["result_coord_type"]
                 self.view_point = [self.data["meta"]["start_point"]["lat"], self.data["meta"]["start_point"]["lng"]]
                 self.pd_data, _ = geojson_to_pd(self.data)
             else:
@@ -103,7 +105,7 @@ class DrawGPS:
 if __name__ == '__main__':
     path = '../data/result_data'
     save_path = '../data/result_data/gps_data'
-    file_name = '1760787874584_geojson'
+    file_name = '1765598740674'
 
     params = {"path": path, "save_path": save_path, "file_name": file_name, "data_type": "json", "coord_type": "wgs84"}
     # 绘制轨迹

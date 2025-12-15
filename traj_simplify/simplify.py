@@ -49,6 +49,9 @@ class Simplify(object):
         }
         self.core_param = self.simplify_info[self.simplify_mode][self.simplify_level]
 
+        # 采用rdp方式时，默认不进行重投影
+        self.reproject_flag = False
+
         self.data = None
         self.pd_data = None
         self.coordinates = None
@@ -96,7 +99,7 @@ class Simplify(object):
         if available_flag:
             if key_msg != '':
                 self.logger.warning(f"轨迹数据存在异常（不影响抽稀）：{key_msg}")
-            # 转换为WGS84坐标系
+            # 转换为wgs84坐标系（结果默认为wgs84坐标系）
             if self.coord_type != "wgs84":
                 self.logger.info(f"转换坐标系：{self.coord_type} 转换为 wgs84")
                 self.pd_data = update_pd_data(self.pd_data, self.coord_type)
@@ -104,7 +107,7 @@ class Simplify(object):
             self.logger.error(f"轨迹数据存在异常：{key_msg}")
             raise Exception(f'轨迹数据存在异常：{key_msg}')
 
-    def __rdp_process(self, reproject_flag=False):
+    def __rdp_process(self):
         # 轨迹抽稀
         def cal_projection_distance(left_p, right_p, other_p):
             # 实现方式1：
@@ -159,9 +162,9 @@ class Simplify(object):
                 return [left, right]
 
         remained = rdp_core(0, len(self.coordinates) - 1)
-        self.logger.info(f"是否将要剔除的轨迹点重投影保持轨迹点数量不变:{reproject_flag}")
+        self.logger.info(f"是否将要剔除的轨迹点重投影保持轨迹点数量不变:{self.reproject_flag}")
         # 若要重投影，则找到被剔除点，使用投影坐标替换原坐标
-        if reproject_flag:
+        if self.reproject_flag:
             simplified = []
             updated_info = []
             for left, right in zip(remained, remained[1:]):
@@ -226,9 +229,7 @@ class Simplify(object):
             remained_points = list(range(0, len(self.coordinates), self.core_param + 1))
 
         elif "rdp" == self.simplify_mode:
-            # 默认不重投影
-            reproject_flag = False
-            result = self.__rdp_process(reproject_flag)
+            result = self.__rdp_process()
             remained_points = result["remained"]
             # 更新坐标、航向角
             if "simplified" in result:

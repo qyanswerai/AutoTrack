@@ -20,46 +20,52 @@ def pd_to_geojson(data, data_info):
     feature_list = []
 
     # 确定起点、终点信息（根据起止轨迹点确定）
-    start_point = data[["lng", "lat", "timestamp"]].iloc[0].to_dict()
-    end_point = data[["lng", "lat", "timestamp"]].iloc[-1].to_dict()
+    start_point = data[["lng", "lat"]].iloc[0].to_dict()
+    end_point = data[["lng", "lat"]].iloc[-1].to_dict()
+    data_info["start_point"] = start_point
+    data_info["end_point"] = end_point
     # Object of type int64 is not JSON serializable，可以转换为str（简单的处理方式）
     # 或者转换为时间：pd.Timestamp(data['timestamp'].iloc[0],unit='ms',tz='Asia/Shanghai')
     #     1402099200000 ==> Timestamp('2014-06-07 08:00:00+0800', tz='Asia/Shanghai')
-    start_time = str(data["timestamp"].iloc[0])
-    end_time = str(data["timestamp"].iloc[-1])
-    start_point["timestamp"] = start_time
-    end_point["timestamp"] = end_time
+    sp_properties = {"color": "green",
+                     "point": start_point,
+                     "popup": {"title": "起点"}}
+    ep_properties = {"color": "red",
+                     "point": end_point,
+                     "popup": {"title": "终点"}}
 
-    data_info["start_point"] = start_point
-    data_info["end_point"] = end_point
-    data_info["start_time"] = start_time
-    data_info["end_time"] = end_time
+    properties = {"color": "green",
+                  "start_point": start_point,
+                  "end_point": end_point}
+
+    if 'timestamp' in data:
+        start_time = str(data["timestamp"].iloc[0])
+        end_time = str(data["timestamp"].iloc[-1])
+
+        data_info["start_time"] = start_time
+        data_info["end_time"] = end_time
+
+        sp_properties["time"] = start_time
+        ep_properties["time"] = end_time
+
+        properties["start_time"] = start_time
+        properties["end_time"] = end_time
+        properties["timestamps"] = data["timestamp"].values.tolist()
+    if "speed" in data:
+        properties["speeds"] = data["speed"].values.tolist()
+    if "direction" in data:
+        properties["directions"] = data["direction"].values.tolist()
 
     sp = geojson.Feature(
         geometry=geojson.Point(tuple(data[["lng", "lat"]].iloc[0])),
-        properties={"color": "green",
-                    "time": start_time,
-                    "point": start_point,
-                    "popup": {"title": "起点"}})
+        properties=sp_properties)
 
     ep = geojson.Feature(
         geometry=geojson.Point(tuple(data[["lng", "lat"]].iloc[-1])),
-        properties={"color": "red",
-                    "time": end_time,
-                    "point": end_point,
-                    "popup": {"title": "终点"}})
+        properties=ep_properties)
 
     feature_list.append(sp)
     feature_list.append(ep)
-
-    properties = {"color": "green",
-                  "start_time": start_time,
-                  "end_time": end_time,
-                  "start_point": start_point,
-                  "end_point": end_point,
-                  "timestamps": data["timestamp"].values.tolist(),
-                  "speeds": data["speed"].values.tolist(),
-                  "directions": data["direction"].values.tolist()}
 
     coordinates = data[["lng", "lat"]].values.tolist()
     line = geojson.Feature(
@@ -103,6 +109,11 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
     :return:
     """
     json_data = None
+    if data is not None:
+        # 使用generate_info（meta字段的一个子属性）记录轨迹生成相关的信息
+        data_info = {"generate_info": data_info}
+        json_data = pd_to_geojson(data, data_info)
+
     # 是否保存处理后的轨迹
     if data is not None and save_path != "":
         if file_name == "":
@@ -110,10 +121,6 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
             file_path = os.path.join(save_path, file_name + '.' + save_type)
         else:
             file_path = os.path.join(save_path, file_name + '.' + save_type)
-
-        # 使用generate_info（meta字段的一个子属性）记录轨迹生成相关的信息
-        data_info = {"generate_info": data_info}
-        json_data = pd_to_geojson(data, data_info)
 
         if save_type == "json":
             # 保存为geojson格式的json文件
@@ -326,7 +333,7 @@ def update_speed(data):
     return data
 
 
-def update_pd_data(data, from_crs="GCJ02", to_crs="WGS84"):
+def update_pd_data(data, from_crs="gcj02", to_crs="wgs84"):
     """
     更新轨迹数据：对经纬度坐标进行坐标系转换
     :param data: 轨迹数据

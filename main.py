@@ -6,6 +6,7 @@ import pandas as pd
 
 from traj_denoising.denoising import Denoising, DenoisingItem
 from traj_simplify.simplify import Simplify, SimplifyItem
+from traj_supplement.supplement import Supplement, SupplementItem
 
 import logging
 log_dir = './logs'
@@ -34,9 +35,12 @@ def traj_acquisition_test():
     save_path = r"data/result_data"
 
     # 起点、终点、中间点的形式符合高德驾车路径规划API的要求
-    origin = "116.481028,39.989643"
-    destination = "116.434446,39.90816"
-    way_points = "116.461028,39.959643;116.441028,39.929643"
+    # origin = "116.481028,39.989643"
+    # destination = "116.434446,39.90816"
+    # way_points = "116.461028,39.959643;116.441028,39.929643"
+    origin = "121.418634,31.223663"
+    destination = "121.018527,31.098996"
+    # way_points = "121.167664,31.147555"
     other_params = {"show_fields": "polyline",
                     "profile": "driving-hgv",
                     "format": "geojson"}
@@ -44,14 +48,14 @@ def traj_acquisition_test():
     inputs = {"origin": origin,
               "destination": destination,
               # "way_points": way_points,
-              "method_type": "ors",
-              "coord_type": "bd09ll",
+              "method_type": "amap",
+              "coord_type": "gcj02",
+              # "result_coord_type": "gcj02",
               "other_params": other_params,
               "logger": logger,
               "save_path": save_path,
               "result_type": "json",
-              "simulate_flag": True,
-              "noise_flag": True
+              "simulate_flag": False
               }
 
     try:
@@ -130,6 +134,28 @@ def traj_simplify_test():
         print(e)
         return None
 
+def traj_supplement_test():
+    """
+    测试轨迹降噪功能
+    :return:
+    """
+    path = r'data/raw_data'
+    save_path = r'data/result_data'
+
+    # 【1个缺失段】
+    file = '缺失段.json'
+    inputs = {'data_path': path, 'data_name': file, 'supplement_mode': 'acquire', "logger": logger}
+
+    try:
+        # 虽然logger不是必需字段，但是为了代码正常执行需要传入
+        SupplementItem(**inputs)
+        traj_supplement = Supplement(**inputs)
+        traj_data = traj_supplement.process()
+        return traj_data
+    except ValidationError as e:
+        print(e)
+        return None
+
 
 if __name__ == '__main__':
     # 测试轨迹获取功能
@@ -148,6 +174,9 @@ if __name__ == '__main__':
 
     # 测试轨迹抽稀功能
     # traj_info = traj_simplify_test()
+
+    # 测试轨迹补全功能
+    # traj_info = traj_supplement_test()
 
     print('finished')
 

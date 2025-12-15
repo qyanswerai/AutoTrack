@@ -55,6 +55,9 @@ class TrajAcquisition:
         self.alternative_methods = ["amap", "baidu", "ors"]
         self.method_coord_info = {"amap": "gcj02", "baidu": "bd09ll", "ors": "wgs84"}
 
+        # 对于ors，使用sdk的方式调用（python库openrouteservice）
+        self.amap_url = "https://restapi.amap.com/v5/direction/driving"
+        self.baidu_url = "https://api.map.baidu.com/direction/v2/driving"
         # 定位精度，与noise_level相关：噪声等级为low，定位精度高，轨迹点偏移范围为20米
         # 20米为实际的GPS定位点，50米为GPS点 + 精度较高的WIFI定位点，100米为GPS点 + 大部分WIFI定位点
         self.gps_accuracy_info = {"low": 20, "mid": 50, "high": 100}
@@ -229,7 +232,6 @@ class TrajAcquisition:
         使用高德获取轨迹
         :return:
         """
-        url = 'https://restapi.amap.com/v5/direction/driving'
         key = get_api_key(method='amap')
         params = {"key": key,
                   "origin": self.origin,
@@ -244,7 +246,8 @@ class TrajAcquisition:
                 params["show_fields"] = self.other_params["show_fields"]
 
         try:
-            response = requests.get(url=url, params=params)
+            # 默认返回高德推荐，同高德地图APP（可能有多条路线）
+            response = requests.get(url=self.amap_url, params=params)
             if response.status_code == 200:
                 response = response.json()
                 coors_list = []
@@ -255,6 +258,8 @@ class TrajAcquisition:
                         steps = path["steps"]
                         for step in steps:
                             coors_list.extend(step["polyline"].split(';'))
+                        # 只考虑第一条路线
+                        break
                     coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
                     print(len(coors_list))
                     self.result_data = coors_list
@@ -271,8 +276,6 @@ class TrajAcquisition:
         使用百度获取轨迹
         :return:
         """
-        # 接口地址
-        url = "https://api.map.baidu.com/direction/v2/driving"
         ak = get_api_key(method='baidu')
 
         params = {
@@ -286,13 +289,16 @@ class TrajAcquisition:
             params["waypoints"] = self.way_points
 
         try:
-            response = requests.get(url=url, params=params)
+            # 默认返回一条推荐路线
+            response = requests.get(url=self.baidu_url, params=params)
             if response.status_code == 200:
                 response = response.json()
                 coors_list = []
                 for route in response['result']['routes']:
                     for step in route['steps']:
                         coors_list.extend(step['path'].split(';'))
+                    # 只考虑第一条路线
+                    break
                 coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
                 print(len(coors_list))
                 self.result_data = coors_list
@@ -380,7 +386,7 @@ class TrajAcquisition:
             # 确定所获取的轨迹的坐标系（由method_type决定）
             tem_coord_type = self.method_coord_info[self.method_type]
             if self.interpolate_flag:
-                # 插值前需要先将tem_coord_type转换为WGS84
+                # 插值前需要先将tem_coord_type转换为wgs84
                 self.__enhance_by_interpolate(tem_coord_type)
                 tem_coord_type = 'wgs84'
 
