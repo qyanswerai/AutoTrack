@@ -220,7 +220,8 @@ class TrajAcquisition:
         try:
             route = client.directions(**params)
             coors_list = route["features"][0]["geometry"]["coordinates"]
-            print(len(coors_list))
+            print(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
+            self.logger.info(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
             self.result_data = coors_list
         except Exception as e:
             print('ORS 获取路径失败')
@@ -261,7 +262,8 @@ class TrajAcquisition:
                         # 只考虑第一条路线
                         break
                     coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
-                    print(len(coors_list))
+                    print(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
+                    self.logger.info(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
                     self.result_data = coors_list
                 else:
                     print(response["info"])
@@ -300,7 +302,8 @@ class TrajAcquisition:
                     # 只考虑第一条路线
                     break
                 coors_list = [list(map(float, coord.split(','))) for coord in coors_list]
-                print(len(coors_list))
+                print(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
+                self.logger.info(f'路径规划获取的路线包含{len(coors_list)}个轨迹点')
                 self.result_data = coors_list
         except Exception as e:
             print('baidu 获取路径失败')

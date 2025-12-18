@@ -207,7 +207,7 @@ class Simplify(object):
 
     def __simplify_core(self):
         """
-        轨迹降噪核心模块：基于距离确定噪点（两步判断）并剔除
+        轨迹抽稀核心模块：降频、滑动窗口、rdp
         :return:
         """
         if "interval_oriented" == self.simplify_mode:
@@ -252,8 +252,8 @@ class Simplify(object):
 
     def process(self):
         """
-        轨迹降噪主流程：读取轨迹数据并检查；识别噪点并剔除
-        :return: geojson格式的轨迹数据：可能为None（轨迹格式不符合要求）、原始轨迹（降噪过程异常）、降噪后的轨迹（降噪顺利完成）
+        轨迹抽稀主流程：读取轨迹数据并检查；过滤轨迹点
+        :return: geojson格式的轨迹数据：可能为None（轨迹格式不符合要求）、原始轨迹（抽稀过程异常）、抽稀后的轨迹（抽稀顺利完成）
         """
         try:
             # 读取轨迹数据并检查

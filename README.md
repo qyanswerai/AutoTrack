@@ -20,24 +20,22 @@
 # 1、轨迹获取
 
 ## 1.1、输入及输出
-
 ### 1.1.1、输入及示例
-
-| 参数名            | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
-| ----------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
-| origin            | str  | 是       | 起点坐标     | 经度在前，纬度在后，经度和纬度以","分隔<br />坐标精确到小数点后6位即可 | 无     |
-| destination       | str  | 是       | 终点坐标     | 经度在前，纬度在后，经度和纬度用","分割                      | 无     |
-| way_points        | str  | 否       | 途径点坐标   | 每个途径点经纬度以","分割，多个途径点坐标按顺序以";"分隔<br />最多支持16个途经点（method_type为baidu时，最多18个途径点；method_type为ors时，无明确限制） | ""     |
-| method_type       | str  | 否       | 方法         | 获取轨迹的方式：高德amap、百度baidu、开源库ors               | amap   |
-| coord_type        | str  | 否       | 坐标系       | 起点、终点、途径点坐标系：国际坐标wgs84、高德gcj02、百度bd09ll<br />-_- 说明：bd09ll后面两个是小写L | gcj02  |
-| other_params      | dict | 否       | 其他参数     | 其他参数：高德API、百度API、ors库所支持的其他参数，详见链接<br />高德：https://lbs.amap.com/api/webservice/guide/api/newroute#t4<br />百度：https://lbsyun.baidu.com/faq/api?title=webapi/webservice-direction/dirve<br/>ors库：https://openrouteservice.org/dev/#/api-docs/v2/directions | None   |
-| interpolate_flag  | bool | 否       | 是否插点     | 获取路线规划的结果后，可以在线上等距插点（增加点的密度）     | False  |
-| noise_flag        | bool | 否       | 是否轨迹偏移 | 获取路线规划的结果后，可以随机偏移轨迹点（增加噪声）         | False  |
-| simulate_flag     | bool | 否       | 是否新增字段 | 默认通过驾驶状态模拟确定时间戳、速度、航向角字段             | False  |
-| result_coord_type | str  | 否       | 结果坐标系   | 指定所获取的轨迹点的坐标系                                   | wgs84  |
-| save_path         | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
-| save_name         | str  | 否       | 保存名称     | 可以指定文件名，需要符合命名规范，若不指定则以文件保存时刻的Unix时间戳作为文件名 | ""     |
-| result_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | csv    |
+| 参数名           | 类型 | 是否必填 | 含义       | 说明                                                         | 默认值 |
+| ---------------- | ---- | -------- | ---------- | ------------------------------------------------------------ | ------ |
+| origin           | str  | 是       | 起点坐标   | 经度在前，纬度在后，经度和纬度以","分隔<br />坐标精确到小数点后6位即可 | 无     |
+| destination      | str  | 是       | 终点坐标   | 经度在前，纬度在后，经度和纬度用","分割                      | 无     |
+| way_points       | str  | 否       | 途径点坐标 | 每个途径点经纬度以","分割，多个途径点坐标按顺序以";"分隔<br />最多支持16个途经点（method_type为baidu时，最多18个途径点；method_type为ors时，无明确限制） | ""     |
+| method_type      | str  | 否       | 方法   | 获取轨迹的方式：高德amap、百度baidu、开源库ors               | amap   |
+| coord_type       | str  | 否       | 坐标系 | 起点、终点、途径点坐标系：国际坐标wgs84、高德gcj02、百度bd09ll<br />-_- 说明：bd09ll后面两个是小写L | gcj02  |
+| other_params     | dict | 否       | 其他参数   | 其他参数：高德API、百度API、ors库所支持的其他参数，详见链接<br />高德：https://lbs.amap.com/api/webservice/guide/api/newroute#t4<br />百度：https://lbsyun.baidu.com/faq/api?title=webapi/webservice-direction/dirve<br/>ors库：https://openrouteservice.org/dev/#/api-docs/v2/directions | None   |
+| interpolate_flag | bool | 否       | 是否插点   | 获取路线规划的结果后，可以在线上等距插点（增加点的密度）     | False  |
+| noise_flag | bool | 否 | 是否轨迹偏移 | 获取路线规划的结果后，可以随机偏移轨迹点（增加噪声） | False |
+| simulate_flag        | bool  | 否       | 是否新增字段   | 默认通过驾驶状态模拟确定时间戳、速度、航向角字段                           | False |
+| result_coord_type        | str  | 否       | 结果坐标系   | 指定所获取的轨迹点的坐标系                          | wgs84     |
+| save_path        | str  | 否       | 保存路径   | 默认保存在data/result_data文件夹下                           | ""     |
+| save_name        | str  | 否       | 保存名称   | 可以指定文件名，需要符合命名规范，若不指定则以文件保存时刻的Unix时间戳作为文件名 | ""     |
+| result_type      | str  | 否       | 保存类型   | 文件类型：表格型csv、字典型json                              | csv    |
 
 
 
@@ -72,8 +70,8 @@
 - 建议`method_type`与`coord_type`相互匹配：`amap`与`gcj02`、`baidu`与`bd09ll`、`ors`与`wgs84`
 - 若不匹配则需转换坐标系（自动完成）：例如`method_type`为`amap`，`coord_type`为`wgs84`，则坐标系先转换为`gcj02`再调用`API`获取轨迹
 - 若起点`origin`或终点`destination`不在国内，则`method_type`只能为`ors`（入参检查时会自动转换）
-
 ### 1.1.2、输出及示例
+返回geojson格式的轨迹数据：其中，使用generate_info（meta字段的一个子属性）记录轨迹生成相关的信息，包括origin、destination、way_points、final_method_type、result_coord_type
 
 | 参数名            | 类型  | 是否必填 | 含义       | 说明                                                         | 默认值            |
 | ----------------- | ----- | -------- | ---------- | ------------------------------------------------------------ | ----------------- |
@@ -82,7 +80,6 @@
 | way_points        | str   | 是       | 途径点坐标 |                                                              | 与输入相同        |
 | final_method_type | str   | 是       | 方法类型   |                                                              | 与method_type相同 |
 | result_coord_type | str   | 是       | 坐标系类型 |                                                              | wgs84             |
-| traj_points       | list  | 是       | 轨迹数据   | 获取的轨迹点，字段齐全                                       | []                |
 | lng               | float | 否       | 经度       | 坐标系为final_method_type                                    |                   |
 | lat               | float | 否       | 纬度       | 坐标系为final_method_type                                    |                   |
 | timestamp         | int64 | 否       | 时间戳     | Unix格式时间戳，精确到毫秒（以整数形式存储时需注意大小，13位） |                   |
@@ -93,43 +90,66 @@
 
 ```json
 {
-    "origin": "116.481028,39.989643",
-    "destination": "116.434446,39.90816",
-    "way_points": "116.461028,39.959643;116.441028,39.929643",
-    "final_method_type": "amap",
-    "result_coord_type": "wgs84",
-    "traj_points": [
-        {"lng": 104.21018, "lat":30.525391, "timestamp": 1728762988000, "speed": 15.3, "direction": 135},
-        {"lng": 104.210473, "lat":30.525124, "timestamp": 1728763000000, "speed": 2.0, "direction": 141},
-        {"lng": 104.210488, "lat":30.525114, "timestamp": 1728763012000, "speed":0.0, "direction": 120},
-        ...
-        ]
+    "type": "FeatureCollection",
+    "meta": {
+        "generate_info": {
+            "origin": "116.481028,39.989643",
+            "destination": "116.434446,39.90816",
+            "way_points": "",
+            "final_method_type": "ors",
+            "result_coord_type": "wgs84"
+        },
+        "start_time": "1402099200000",
+        "end_time": "1402100468226"
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [116.467862, 39.982132],
+                    [116.467654, 39.981671],
+                    [116.466674, 39.982624]
+                ]
+            },
+            "properties": {
+                "timestamps": [
+                    1402099200000, 1402099214257, 1402099238655
+                ],
+                "speeds": [
+                    10.0, 17.36, 22.45
+                ],
+                "directions": [
+                    199.15637747234447, 199.15637747234447, 321.767451610024
+                ]
+            }
+        }
+    ]
 }
+
 ```
 
 
 ## 1.2、模块功能详解
 
 ### 1.2.1、轨迹获取
-
 **【准备工作】**：获取密钥，修改`config.ini`
-
 - 设置合适的`API Key`名称，可以便于识别该密钥的用途
 - 选择合适的权限范围，根据实际需求进行选择
 - 高德`key`申请：[https://lbs.amap.com/api/webservice/create-project-and-key](https://lbs.amap.com/api/webservice/create-project-and-key)
 - 百度`ak`申请：[https://lbsyun.baidu.com/faq/search?id=299](https://lbsyun.baidu.com/faq/search?id=299)
 - `ors key`申请：[https://openrouteservice.org/](https://openrouteservice.org/)
-  - 注册账号并登录，进入个人中心（点击右上角的用户名）
-  - 可以看到`API keys`，点击`Generate API key`
+	- 注册账号并登录，进入个人中心（点击右上角的用户名）
+	- 可以看到`API keys`，点击`Generate API key`
 
 **【给定输入】**：参照输入字段说明及示例
 
-【轨迹获取主流程】：`main.py`接收输入，调用`traj_acquisition`模块的`traj_acquisition.py`
-
+【轨迹获取主流程】：`main.py`接收输入（需要传入一个日志对象），调用`traj_acquisition`模块的`traj_acquisition.py`
 - 根据指定的`method_type`调用`API`获取轨迹，若失败则尝试其他备选方法
 - 若`interpolate_flag == True`，则通过等距插值补充轨迹点
 - 若`simulate_flag == True`，则调用`traj_acquisition`模块的`traj_info_perfection.py`
-  - 通过车辆行驶状态模拟获取速度、时间戳、航向角字段（`speed`、`timestamp`）
+	- 通过车辆行驶状态模拟获取速度、时间戳、航向角字段（`speed`、`timestamp`）
 - 否则，轨迹点只包含经纬度坐标字段（`lng`、`lat`），可以根据坐标计算航向角（`direction`）
 
 **【获取输出】**：参照输出字段说明及示例
@@ -163,7 +183,6 @@
 - 使用**正态分布**生成随机值表示要移动的距离（需保证距离不小于0）
 - 使用**均值分布**生成随机值表示要移动的角度（角度值为0~360）
 - 根据距离、角度直接确定移动后的坐标
-
   ![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/6c1ae2591ff04217b0de4cc2dab40cba.png)
 
 #### 【基于坐标转换】
@@ -171,7 +190,6 @@
 - 经纬度坐标转换为平面坐标x、y
 - 使用**正态分布**生成随机值表示x、y分别要移动的距离
 - 确定移动后的x、y，转换为经纬度坐标
-
   ![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/08769219724f476ea88c4dc20fdd2010.png)
 
 
@@ -179,33 +197,26 @@
 ### 1.2.3、字段补全
 
 #### 【字段补全思路】
-
 通过调用路径规划接口能获取轨迹点的坐标（`lng`、`lat`），根据坐标字段可以计算航向角（`direction`），但是还缺少时间戳、速度字段（`timestamp`、`speed`），本算法通过**车辆行驶状态模拟**得到
-
 - **计算`direction`**：根据相邻点的坐标采用公式计算`direction`，正北为0，顺时针递增（0~360.0）
 - **生成`speed`**：根据车辆行驶状态模拟得到每个轨迹点的速度（详见下文说明）
-  - 给定初始速度、初始加速度状态
-  - 计算下一时刻的速度，根据对应的状态转移概率得到下一时刻的加速度状态
-  - 重复执行，确定所有轨迹点的速度
+	- 给定初始速度、初始加速度状态
+	- 计算下一时刻的速度，根据对应的状态转移概率得到下一时刻的加速度状态
+	- 重复执行，确定所有轨迹点的速度
 - **生成`timestamp`**：根据轨迹点的坐标、速度计算
-  - 给定初始时间戳
-  - 根据相邻点坐标采用公式计算距离，以两个点的速度均值作为路段的速度（若速度为0，则时间戳直接增加10秒），根据距离、速度计算路段的行程时间，进而得到时间戳
-  - 重复执行，确定所有轨迹点的时间戳
-
+	- 给定初始时间戳（默认为2014-06-07 08:00:00）
+	- 根据相邻点坐标采用公式计算距离，以两个点的速度均值作为路段的速度（若速度为0，则时间戳直接增加10秒），根据距离、速度计算路段的行程时间，进而得到时间戳
+	- 重复执行，确定所有轨迹点的时间戳
 #### 【速度生成】
-
 为了**精细化模拟车辆行驶状态**，**将车辆状态细分为速度状态、加速度状态**
-
 - **速度状态**：低速（0-50）、中速（50-70）、高速（70-90）、超高速（90-100）
 - **加速度状态**：加速（速度增大）、减速（速度减小）、巡航（速度上下波动）
 - 最大速度默认为100km/h（以上数值适用于货车，可根据需要修改，例如小汽车最大速度可设置为120）
 - 速度调整：生成给定区间内的随机值（与速度状态有关），与当前速度做差或求和
 
 **状态转移说明（可结合代码辅助理解）：已知`t`时刻的车辆状态（例如【低速 + 加速】）**
-
 - 则可以根据【低速 + 加速】确定`t+1`时刻的速度（当前速度加上一个给定区间内的随机值）
 - 同样根据【低速 + 加速】对应的状态转移概率确定`t+1`时刻的状态
-
 ```json
 {
     "low_speed": {
@@ -239,7 +250,6 @@
 <img src="https://i-blog.csdnimg.cn/direct/bdc332facc7f494bacc076c806d87d7b.png" alt="在这里插入图片描述" style="zoom:67%;" />
 
 ### 1.2.4、轨迹可视化
-
 读取轨迹文件，使用`folium`库绘制轨迹
 
 （补充：可以通过网站[http://geojson.io](http://geojson.io)测试、预览GeoJSON格式的轨迹）
@@ -249,12 +259,11 @@
 | path       | str  | 是       | 轨迹路径   | 需进行可视化的轨迹数据路径               |        |
 | save_path  | str  | 是       | 保存路径   | 轨迹可视化结果保存路径                   |        |
 | file_name  | str  | 是       | 文件名称   | 需进行可视化的轨迹数据文件名             |        |
-| data_type  | str  | 否       | 文件类型   | 文件类型：表格型csv、字典型json          | csv    |
+| data_type  | str  | 否       | 文件类型   | 文件类型：csv、json（需满足geojson格式）          | csv    |
 | coord_type | str  | 否       | 坐标系类型 | 轨迹数据坐标系类型：wgs84、gcj02、bd09ll | gcj02  |
-
 - 注意事项
-  - 轨迹数据的坐标系为`wgs84`时（使用`OpenStreetMap`作为底图），可能加载失败，建议转换为其他坐标系再尝试绘图
-  - 可视化结果为与`file_name`相同的`html`文件，可使用浏览器打开
+	- 轨迹数据的坐标系为`wgs84`时（使用`OpenStreetMap`作为底图），可能加载失败，建议转换为其他坐标系再尝试绘图
+	- 可视化结果为与`file_name`相同的`html`文件，可使用浏览器打开
 
 
 
@@ -264,16 +273,16 @@
 
 ### 2.1.1、输入及示例
 
-| 参数名          | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
-| --------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
-| data_path       | str  | 是       | 轨迹文件路径 | 默认放置在data/raw_data文件夹下                              |        |
-| data_name       | str  | 是       | 轨迹文件名称 | 需进行降噪处理的轨迹文件，需要符合命名规范                   |        |
-| data_type       | str  | 否       | 轨迹文件类型 | 文件类型：表格型csv、字典型json                              | json   |
-| data_info       | dict | 否       | 轨迹相关信息 | 例如轨迹起点坐标、终点坐标等                                 | None   |
-| coord_type      | str  | 否       | 坐标系       | 轨迹数据的坐标系：wgs84、gcj02、bd09ll，降噪后的轨迹坐标系会强制转换为wgs84 | wgs84  |
-| save_path       | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
-| save_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | json   |
-| denoising_level | str  | 否       | 降噪强度     | 弱(low)、中(mid)、强(high)  ，降噪强度越大，识别到的噪点越多 | low    |
+| 参数名            | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
+| ----------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
+| data_path         | str  | 是       | 轨迹文件路径     | 默认放置在data/raw_data文件夹下                           |      |
+| data_name         | str  | 是       | 轨迹文件名称     | 需进行降噪处理的轨迹文件，需要符合命名规范 |      |
+| data_type       | str  | 否       | 轨迹文件类型     | 文件类型：表格型csv、字典型json                              | json    |
+| data_info      | dict | 否       | 轨迹相关信息     | 例如轨迹起点坐标、终点坐标等 | None   |
+| coord_type        | str  | 否       | 坐标系       | 轨迹数据的坐标系：wgs84、gcj02、bd09ll，降噪后的轨迹坐标系会强制转换为wgs84 | wgs84  |
+| save_path         | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
+| save_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | json    |
+| denoising_level       | str  | 否       | 降噪强度     | 弱(low)、中(mid)、强(high)  ，降噪强度越大，识别到的噪点越多                            | low    |
 
 
 ```json
@@ -297,14 +306,13 @@
 【入参说明】
 
 - 若给定`save_path`且成功降噪，则保存降噪后的轨迹文件
-  - 若`data_name`为“孤立噪点.json”，则降噪后的轨迹文件为“孤立噪点_denoising.json”
+  - 若`data_name`为"孤立噪点.json"，则降噪后的轨迹文件为"孤立噪点_denoising.json"
   - 降噪后的轨迹坐标系均转换为`wgs84`
 - `denoising_level`影响噪点识别相关的阈值，`high`与`low`相比，阈值更“小”更容易触发，能识别到更多噪点
 
 ### 2.1.2、输出及示例
 
 降噪后的轨迹以`Geojson`格式返回，噪点信息保存在`meta--noise_info`中
-
 - `noise_num`：噪点数量
 - `noise_points`：噪点信息，包括坐标、时间戳、速度等
 
@@ -380,10 +388,307 @@
 
 **【给定输入】**：参照输入字段说明及示例
 
-【轨迹获取主流程】：`main.py`接收输入，调用`traj_noising`模块的`denoising.py`
+【轨迹降噪主流程】：`main.py`接收输入（需要传入一个日志对象），调用`traj_noising`模块的`denoising.py`
 
-- 根据指定的`data_type`解析轨迹数据，调用算法识别并剔除噪点，返回降噪后的轨迹（同时保存一份`Geojson`格式的轨迹文件）
+- 根据指定的`data_type`解析轨迹数据，调用算法识别并剔除噪点，返回降噪后的轨迹
 - 调整`denoising_level`可控制算法阈值，从而控制降噪效果
 
 **【获取输出】**：参照输出字段说明及示例
+
+# 3、轨迹抽稀
+
+## 3.1、输入及输出
+
+### 3.1.1、输入及示例
+
+| 参数名            | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
+| ----------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
+| data_path         | str  | 是       | 轨迹文件路径     | 默认放置在data/raw_data文件夹下                           |      |
+| data_name         | str  | 是       | 轨迹文件名称     | 需进行降噪处理的轨迹文件，需要符合命名规范 |      |
+| data_type       | str  | 否       | 轨迹文件类型     | 文件类型：表格型csv、字典型json                              | json    |
+| data_info      | dict | 否       | 轨迹相关信息     | 例如轨迹起点坐标、终点坐标等 | None   |
+| coord_type        | str  | 否       | 坐标系       | 轨迹数据的坐标系：wgs84、gcj02、bd09ll，降噪后的轨迹坐标系会强制转换为wgs84 | wgs84  |
+| save_path         | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
+| save_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | json    |
+| simplify_mode       | str  | 否       | 抽稀方式     | 降频(downclocking)、滑动窗口(interval_oriented)、RDP(rdp)                              | interval_oriented    |
+| simplify_level       | str  | 否       | 抽稀强度     | 弱(low)、中(mid)、强(high)  ，抽稀强度越大，过滤掉的轨迹点越多                            | low    |
+
+
+```json
+{
+    "data_path": r"data/raw_data",
+    "data_name": "孤立噪点.json",
+    "data_type": "json",
+    "data_info": {
+        "origin_name": "上海市人民广场",
+        "destination_name": "北京市天安门广场"
+    },
+    "coord_type": "gcj02",
+    "save_path": r"data/result_data",
+    "save_type": "json",
+    "simplify_mode": "interval_oriented",
+    "simplify_level": "low"
+}
+```
+
+
+
+【入参说明】
+
+- 若给定`save_path`且成功抽稀，则保存抽稀后的轨迹文件
+  - 若`data_name`为"孤立噪点.json"，则抽稀后的轨迹文件为"孤立噪点_simplify.json"
+  - 抽稀后的轨迹坐标系均转换为`wgs84`
+- `simplify_level`影响抽稀相关的阈值，`high`与`low`相比，阈值更“大”，能过滤掉更多轨迹点
+
+### 3.1.2、输出及示例
+
+降噪后的轨迹以`Geojson`格式返回，抽稀信息保存在`meta--simplify_info`中
+- `raw_num`：抽稀前轨迹点数量
+- `remained_num`：抽稀后轨迹点数量
+
+`Geojson`相关信息详见：[GPS轨迹生成：基于AutoTraj库【轨迹获取模块】（3.2 补充说明）](https://blog.csdn.net/weixin_42639395/article/details/146050157?fromshare=blogdetail&sharetype=blogdetail&sharerId=146050157&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)
+
+
+```json
+{
+    "type": "FeatureCollection",
+    "meta": {
+        "start_point": {
+            "lng": 120.201697,
+            "lat": 36.140966,
+            "timestamp": "1732239164000"
+        },
+        "end_point": {
+            "lng": 120.353688,
+            "lat": 36.166415,
+            "timestamp": "1732239854000"
+        },
+        "start_time": "1732239164000",
+        "end_time": "1732239854000",
+        "traj_info": {
+            "total_mileage": 49.961,
+            "mean_time_interval": 34.5,
+            "max_missing_length": 20.857,
+            "total_missing_length": 38.7,
+            "missing_rate": 0.775
+        },
+        "simplify_info": {
+            "raw_num": 21,
+            "remained_num": 14
+        }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [120.201697, 36.140966],
+                    [120.208022, 36.143974],
+                    [120.214304, 36.146953],
+                    ...
+                ]
+            },
+            "properties": {
+                "timestamps": [
+                    1732239164000, 1732239194000, 1732239224000,...
+                ],
+                "speeds": [
+                    81.3, 76.8, 78.7,...
+                ],
+                "directions": [
+                    59.0, 59.0, 59.0,...
+                ]
+         }
+    ]
+}           
+```
+
+
+
+## 3.2、模块功能详解
+
+**【给定输入】**：参照输入字段说明及示例
+
+【轨迹抽稀主流程】：`main.py`接收输入（需要传入一个日志对象），调用`traj_simplify`模块的`simplify.py`
+
+- 根据指定的`data_type`解析轨迹数据，调用算法过滤轨迹点，返回抽稀后的轨迹
+- 调整`simplify_level`可控制算法阈值，从而控制抽稀效果
+
+**【获取输出】**：参照输出字段说明及示例
+
+# 4、轨迹补全
+
+## 4.1、输入及输出
+
+### 4.1.1、输入及示例
+
+| 参数名            | 类型 | 是否必填 | 含义         | 说明                                                         | 默认值 |
+| ----------------- | ---- | -------- | ------------ | ------------------------------------------------------------ | ------ |
+| data_path         | str  | 是       | 轨迹文件路径     | 默认放置在data/raw_data文件夹下                           |      |
+| data_name         | str  | 是       | 轨迹文件名称     | 需进行降噪处理的轨迹文件，需要符合命名规范 |      |
+| data_type       | str  | 否       | 轨迹文件类型     | 文件类型：表格型csv、字典型json                              | json    |
+| data_info      | dict | 否       | 轨迹相关信息     | 例如轨迹起点坐标、终点坐标等 | None   |
+| coord_type        | str  | 否       | 坐标系       | 轨迹数据的坐标系：wgs84、gcj02、bd09ll，补全后的轨迹坐标系会强制转换为wgs84 | wgs84  |
+| save_path         | str  | 否       | 保存路径     | 默认保存在data/result_data文件夹下                           | ""     |
+| save_type       | str  | 否       | 保存类型     | 文件类型：表格型csv、字典型json                              | json    |
+| supplement_mode       | str  | 否       | 补全方式     | 直线等距插值(interpolate)、路径规划(route_plan)                              | route_plan    |
+| missing_segment_lower       | str  | 否       | 缺失段长度下限     | 单位km，值越小，需要补全的缺失段越多                            | 10.0    |
+| missing_segment_upper       | str  | 否       | 缺失段长度上限     | 单位km，值越大，需要补全的缺失段越多                            | 50.0    |
+
+
+```json
+{
+    "data_path": r"data/raw_data",
+    "data_name": "孤立噪点.json",
+    "data_type": "json",
+    "data_info": {
+        "origin_name": "上海市人民广场",
+        "destination_name": "北京市天安门广场"
+    },
+    "coord_type": "gcj02",
+    "save_path": r"data/result_data",
+    "save_type": "json",
+    "supplement_mode": "route_plan",
+    "missing_segment_lower": 15.0,
+    "missing_segment_upper": 55.0,
+}
+```
+
+
+
+【入参说明】
+
+- 若给定`save_path`且成功补全，则保存补全后的轨迹文件
+  - 若`data_name`为"缺失段.json"，则抽稀后的轨迹文件为"缺失段_supplement.json"
+  - 抽稀后的轨迹坐标系均转换为`wgs84`
+- `missing_segment_lower`及`missing_segment_upper`可控制缺失段长度阈值，从而控制需补全的缺失段数量
+
+### 4.1.2、输出及示例
+
+补全后的轨迹以`Geojson`格式返回，缺失段及补全信息保存在`meta--missing_supplement_info`中
+- `missing_segment_num`：缺失段数量
+- `missing_info`：缺失段信息，包括起终点经纬度、时间戳、缺失段长度、时间差
+- `supplement_mode`：补全方式（默认为`route_plan`）
+- `supplement_points_num`：补上的轨迹点数量
+
+`Geojson`相关信息详见：[GPS轨迹生成：基于AutoTraj库【轨迹获取模块】（3.2 补充说明）](https://blog.csdn.net/weixin_42639395/article/details/146050157?fromshare=blogdetail&sharetype=blogdetail&sharerId=146050157&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)
+
+
+```json
+{
+    "type": "FeatureCollection",
+    "meta": {
+        "start_point": {
+            "lng": 120.201697,
+            "lat": 36.140966,
+            "timestamp": "1732239164000"
+        },
+        "end_point": {
+            "lng": 120.353688,
+            "lat": 36.166415,
+            "timestamp": "1732239854000"
+        },
+        "start_time": "1732239164000",
+        "end_time": "1732239854000",
+        "traj_info": {
+            "total_mileage": 49.961,
+            "mean_time_interval": 34.5,
+            "max_missing_length": 20.857,
+            "total_missing_length": 38.7,
+            "missing_rate": 0.775
+        },
+        "simplify_info": {
+            "raw_num": 21,
+            "remained_num": 14
+        },
+        "missing_supplement_info": {
+            "missing_segment_num": 1,
+            "missing_info": [
+                {
+                    "start": {
+                        "lng": 121.343564,
+                        "lat": 31.224228,
+                        "timestamp": "1402100479527"
+                    },
+                    "end": {
+                        "lng": 121.19209,
+                        "lat": 31.14225,
+                        "timestamp": "1402102268634"
+                    },
+                    "length": 17050.79150523711,
+                    "interval": "1789107"
+                }
+            ],
+            "supplement_mode": "route_plan",
+            "supplement_points_num": 183
+        }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [120.201697, 36.140966],
+                    [120.208022, 36.143974],
+                    [120.214304, 36.146953],
+                    ...
+                ]
+            },
+            "properties": {
+                "timestamps": [
+                    1732239164000, 1732239194000, 1732239224000,...
+                ],
+                "speeds": [
+                    81.3, 76.8, 78.7,...
+                ],
+                "directions": [
+                    59.0, 59.0, 59.0,...
+                ]
+         }
+    ]
+}           
+```
+
+
+
+## 4.2、模块功能详解
+
+**【给定输入】**：参照输入字段说明及示例
+
+【轨迹抽稀主流程】：`main.py`接收输入（需要传入一个日志对象），调用`traj_supplement`模块的`supplement.py`
+
+- 根据指定的`data_type`解析轨迹数据，记录缺失段然后调用算法补全轨迹点，返回补全的轨迹
+- 调整`missing_segment_lower`及`missing_segment_upper`可控制缺失段长度阈值，从而控制需补全的缺失段数量
+
+**【获取输出】**：参照输出字段说明及示例
+
+# 5、TODO
+## 5.1、轨迹处理全流程
+接收轨迹文件，实现轨迹降噪、抽稀、补全模块串行调用
+## 5.2、轨迹补全模块优化
+目前轨迹补全要求轨迹数据必须包含经纬度、时间戳（使用了timestamp字段）
+需完善：仅有经纬度的轨迹也要能进行补全
+## 5.3、轨迹质量分级
+受采集设备、传输存储方式的影响，不同供应商提供的GPS轨迹良莠不齐，不同的轨迹需要的处理方式处理程度都有所区别
+- 好的轨迹：采样频率高（轨迹密集）、噪点少、缺失段少、与道路重合度高；
+- 差的轨迹：采样频率低（轨迹稀疏）、噪点多、缺失段多、与道路重合度低
+
+![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/0aa5cfbeaa8c4b4ea15c8bb7c51aa237.png)
+
+考虑使用3个维度的6个指标评估轨迹质量
+- 【采样频率】：每分钟采集的轨迹点数作为采样频率（60 / 采样间隔），频率越高说明轨迹质量越好；
+  - 采样间隔：相邻轨迹点时间间隔的均值
+- 【噪点状况】：噪点路段数量、噪点数量（异常的轨迹点数）、累计偏移距离（噪点路段长度和）；
+- 【缺失状况】：缺失路段数量、累计缺失距离（缺失路段长度和）
+- 详见[轨迹降噪](https://blog.csdn.net/weixin_42639395/article/details/148025371?fromshare=blogdetail&sharetype=blogdetail&sharerId=148025371&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)、[轨迹补全](https://blog.csdn.net/weixin_42639395/article/details/148369931?fromshare=blogdetail&sharetype=blogdetail&sharerId=148369931&sharerefer=PC&sharesource=weixin_42639395&sharefrom=from_link)相关文章
+![\[图片\]](https://i-blog.csdnimg.cn/direct/b0939c2e52134c669f351160247444be.png)
+
+
+**根据采样频率、噪点状况、缺失状况可将轨迹划分为差、良、优3个等级**
+- 可以用复杂的方式确定6个指标与3个等级的关系，例如层次分析法、模糊综合评价法等
+  - 暂时只根据采样频率确定质量等级：差（`<=2`，即采样周期`>=30s`）、良（`2~6`）、优（`>=6`）
+  - 原因：一方面，进行地图匹配前会识别噪点并剔除，因此噪点状况对后续影响不大；另一方面，隧道导致的轨迹缺失是正常且不可避免的，因此暂不使用缺失状况评估轨迹质量
+- **【后续应用】为不同等级的轨迹设置各自的地图匹配参数**
 

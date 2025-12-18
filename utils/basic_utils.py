@@ -152,7 +152,6 @@ def cal_haversine_dis(cur_point, next_point):
     d = 2 * AVG_EARTH_RADIUS * math.asin(math.sqrt(d))  # in kilometers
     return d * 1000
 
-
 def cal_haversine_dis_vector(df):
     """
     向量化计算相邻点之间的球面距离（单位：m），返回距离数组

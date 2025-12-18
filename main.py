@@ -103,7 +103,7 @@ def traj_denoising_test():
 
 def traj_simplify_test():
     """
-    测试轨迹降噪功能
+    测试轨迹抽稀功能
     :return:
     """
     path = r'data/raw_data'
@@ -136,7 +136,7 @@ def traj_simplify_test():
 
 def traj_supplement_test():
     """
-    测试轨迹降噪功能
+    测试轨迹补全功能
     :return:
     """
     path = r'data/raw_data'
@@ -144,7 +144,7 @@ def traj_supplement_test():
 
     # 【1个缺失段】
     file = '缺失段.json'
-    inputs = {'data_path': path, 'data_name': file, 'supplement_mode': 'acquire', "logger": logger}
+    inputs = {'data_path': path, "save_path": save_path, 'data_name': file, 'supplement_mode': 'route_plan', "logger": logger}
 
     try:
         # 虽然logger不是必需字段，但是为了代码正常执行需要传入
@@ -159,7 +159,7 @@ def traj_supplement_test():
 
 if __name__ == '__main__':
     # 测试轨迹获取功能
-    traj_info = traj_acquisition_test()
+    # traj_info = traj_acquisition_test()
 
     # 计算相邻点的间距
     # if traj_info is not None:
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # traj_info = traj_simplify_test()
 
     # 测试轨迹补全功能
-    # traj_info = traj_supplement_test()
+    traj_info = traj_supplement_test()
 
     print('finished')
 

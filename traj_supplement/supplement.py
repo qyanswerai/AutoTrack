@@ -17,7 +17,7 @@ class SupplementItem(BaseModel):
     coord_type: str = "wgs84"
     save_path: str = ""
     save_type: str = "json"
-    supplement_mode: str = "acquire"
+    supplement_mode: str = "route_plan"
     missing_segment_lower: float = 10.0
     missing_segment_upper: float = 50.0
     data_info: object = None
@@ -27,7 +27,7 @@ class SupplementItem(BaseModel):
 class Supplement(object):
     def __init__(self, data_path, data_name, data_type='json', data_info=None, logger=None, coord_type="wgs84",
                  save_path="", save_type='json',
-                 supplement_mode="acquire", missing_segment_lower=10.0, missing_segment_upper=50.0):
+                 supplement_mode="route_plan", missing_segment_lower=10.0, missing_segment_upper=50.0):
         self.data_path = data_path
         self.data_name = data_name
         self.data_type = data_type
@@ -42,7 +42,7 @@ class Supplement(object):
         self.missing_segment_upper = missing_segment_upper
 
         # supplement_mode：
-        # 方式1：acquire，调用【轨迹获取模块 traj acquisition】，使用API的路径规划能力补全缺失段
+        # 方式1：route_plan，调用【轨迹获取模块 traj acquisition】，使用API的路径规划能力补全缺失段
         # 方式2：interpolate，对缺失段等距插值
 
         # 缺失段上下限（单位；km）：missing_segment_lower ~ missing_segment_upper，在范围内的缺失段需进行补全
@@ -108,6 +108,15 @@ class Supplement(object):
             raise Exception(f'轨迹数据存在异常：{key_msg}')
 
     def interpolate_point(self, start, end, distance, start_time, interval):
+        """
+        缺失段起终点连线，线性等距插值
+        :param start: 缺失段起点
+        :param end: 缺失段终点
+        :param distance: 缺失段长度
+        :param start_time: 缺失段起点时间戳
+        :param interval: 缺失段时间间隔
+        :return: 补全的轨迹点（不包含缺失段起终点）
+        """
         points = []
 
         direction = cal_bearing(*start, *end)
@@ -130,16 +139,24 @@ class Supplement(object):
         return data
 
     def update_shortest_path(self, path, start_time, interval):
+        """
+        完善路径规划所获取的轨迹字段
+        :param path: 路径规划获取的轨迹坐标（包含缺失段起终点）
+        :param start_time: 缺失段起点时间戳
+        :param interval: 缺失段时间间隔
+        :return: 补全的轨迹点（不包含缺失段起终点）
+        """
         points = []
         # 轨迹点过滤：因为轨迹点可能存在偏移，若偏移到路的另一侧则据此得到的最短路会存在多余的掉头段
         # 根据起点、终点连线的夹角进行简单过滤：若夹角在[45,135][225,315]范围内，则根据起终点经度过滤；否则根据纬度过滤
-        direction = cal_bearing(*path[0], *path[-1])
-        lng_range = [min(path[0][0], path[-1][0]), max(path[0][0], path[-1][0])]
-        lat_range = [min(path[0][1], path[-1][1]), max(path[0][1], path[-1][1])]
-        if 45 < direction < 135 or 225 < direction < 315:
-            path = [point for point in path if lng_range[0] <= point[0] <= lng_range[1]]
-        else:
-            path = [point for point in path if lat_range[0] <= point[1] <= lat_range[1]]
+        # 经测试，效果不佳，暂时不进行调整 -_-
+        # direction = cal_bearing(*path[0], *path[-1])
+        # lng_range = [min(path[0][0], path[-1][0]), max(path[0][0], path[-1][0])]
+        # lat_range = [min(path[0][1], path[-1][1]), max(path[0][1], path[-1][1])]
+        # if 45 < direction < 135 or 225 < direction < 315:
+        #     path = [point for point in path if lng_range[0] <= point[0] <= lng_range[1]]
+        # else:
+        #     path = [point for point in path if lat_range[0] <= point[1] <= lat_range[1]]
 
         # 计算direction、timestamp
         point_utm = [self.trans_4326.transform(lng, lat) for lng, lat in path]
@@ -157,9 +174,14 @@ class Supplement(object):
         return data
 
     def get_supplement_point_data(self, missing_segments):
-        supplement_data = pd.DataFrame(columns=['lng', 'lat', 'timestamp', 'direction', 'speed'])
+        """
+        根据缺失段确定补全段：路径规划、等距插值
+        :param missing_segments: 缺失段信息
+        :return: 各个缺失段需补全的轨迹点
+        """
+        supplement_list = []
         # 执行【轨迹获取模块】：默认调用高德路径规划API获取轨迹
-        if "acquire" == self.supplement_mode:
+        if "route_plan" == self.supplement_mode:
             self.logger.info("调用【轨迹获取模块】实现缺失段补全，默认调用高德路径规划API获取轨迹")
             print("调用【轨迹获取模块】实现缺失段补全，默认调用高德路径规划API获取轨迹")
             for missing_segment in missing_segments:
@@ -192,7 +214,7 @@ class Supplement(object):
                     # 使用线性插值补全
                     print(f"缺失段 {str(point_i)} -> {str(point_j)}调用【轨迹获取模块】补全失败，转而进行线性插值补全")
                     interpolate_data = self.interpolate_point(point_i, point_j, distance, time_i, delta_t)
-                    supplement_data = pd.concat([supplement_data, interpolate_data], ignore_index=True)
+                    supplement_list.append(interpolate_data)
                 else:
                     # geojson转换为Dataframe
                     api_data, _ = geojson_to_pd(geojson_data)
@@ -201,9 +223,9 @@ class Supplement(object):
                     supplement_route.insert(0, point_i)
                     supplement_route.append(point_j)
                     api_data = self.update_shortest_path(supplement_route, time_i, delta_t)
-                    supplement_data = pd.concat([supplement_data, api_data], ignore_index=True)
+                    supplement_list.append(api_data)
 
-            return supplement_data
+            return supplement_list
         elif "interpolate" == self.supplement_mode:
             self.logger.info("进行线性插值补全")
             print("进行线性插值补全")
@@ -213,15 +235,19 @@ class Supplement(object):
                 point_j = [missing_segment['end']['lng'], missing_segment['end']['lat']]
                 distance = missing_segment['length']
                 delta_t = missing_segment['interval']
-                data = self.interpolate_point(point_i, point_j, distance, time_i, delta_t)
-                supplement_data = pd.concat([supplement_data, data], ignore_index=True)
+                interpolate_data = self.interpolate_point(point_i, point_j, distance, time_i, delta_t)
+                supplement_list.append(interpolate_data)
 
-            return supplement_data
+            return supplement_list
         else:
-            self.logger.error(f"暂不支持{self.supplement_mode}，请换用acquire或者interpolate进行轨迹补全")
-            raise Exception(f"暂不支持{self.supplement_mode}，请换用acquire或者interpolate进行轨迹补全")
+            self.logger.error(f"暂不支持{self.supplement_mode}，请换用route_plan或者interpolate进行轨迹补全")
+            raise Exception(f"暂不支持{self.supplement_mode}，请换用route_plan或者interpolate进行轨迹补全")
 
     def __supplement_core(self):
+        """
+        轨迹补全核心模块：识别缺失段、确定补全段
+        :return:
+        """
         # Step1：识别缺失段
         # 相邻点的距离在指定的缺失段上下限内则进行记录
         missing_segments = []
@@ -252,7 +278,13 @@ class Supplement(object):
         # Step2：补全缺失段
         # 方式1：直线等距插值
         # 方式2：调用轨迹获取模块（不使用该模块的轨迹增强及字段补全功能）
-        supplement_data = self.get_supplement_point_data(missing_segments)
+        supplement_list = self.get_supplement_point_data(missing_segments)
+        supplement_data = pd.concat(supplement_list, ignore_index=True)
+        # 修改missing_segments中的timestamp类型，避免保存为json文件时报错
+        for missing_segment in missing_segments:
+            missing_segment['start']['timestamp'] = str(missing_segment['start']['timestamp'])
+            missing_segment['end']['timestamp'] = str(missing_segment['end']['timestamp'])
+            missing_segment['interval'] = str(missing_segment['interval'])
         self.data_info["missing_supplement_info"] = {"missing_segment_num": len(missing_segments),
                                                      "missing_info": missing_segments,
                                                      "supplement_mode": self.supplement_mode,
@@ -273,8 +305,8 @@ class Supplement(object):
 
     def process(self):
         """
-        轨迹降噪主流程：读取轨迹数据并检查；识别噪点并剔除
-        :return: geojson格式的轨迹数据：可能为None（轨迹格式不符合要求）、原始轨迹（降噪过程异常）、降噪后的轨迹（降噪顺利完成）
+        轨迹补全主流程：读取轨迹数据并检查；识别缺失并补全
+        :return: geojson格式的轨迹数据：可能为None（轨迹格式不符合要求）、原始轨迹（补全过程异常）、补全后的轨迹（补全顺利完成）
         """
         try:
             # 读取轨迹数据并检查
@@ -321,7 +353,7 @@ if __name__ == '__main__':
     #     json.dump(data, f, ensure_ascii=False, indent=4)
 
     file = '缺失段.json'
-    params = {'data_path': path, 'data_name': file, 'supplement_mode': 'acquire'}
+    params = {'data_path': path, 'data_name': file, 'supplement_mode': 'route_plan'}
 
     supplement = Supplement(**params)
     supplement.process()
