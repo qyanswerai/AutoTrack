@@ -98,14 +98,12 @@ def geojson_to_pd(data):
                 pd_data['speed'] = feature['properties']['speeds']
     return pd_data, coordinates
 
-def save_data(data, data_info=None, save_path="", file_name="", save_type="csv"):
+def save_data(data, data_info=None, save_path=""):
     """
     保存轨迹数据
     :param data: 轨迹数据
     :param data_info: 轨迹数据相关信息
     :param save_path: 保存路径
-    :param file_name: 文件名
-    :param save_type: 文件类型
     :return:
     """
     json_data = None
@@ -116,19 +114,21 @@ def save_data(data, data_info=None, save_path="", file_name="", save_type="csv")
 
     # 是否保存处理后的轨迹
     if data is not None and save_path != "":
-        if file_name == "":
-            file_name = str(int(time.time() * 1000))
-            file_path = os.path.join(save_path, file_name + '.' + save_type)
-        else:
-            file_path = os.path.join(save_path, file_name + '.' + save_type)
+        if not (save_path.endswith(".json") or save_path.endswith(".csv")):
+            # 若save_path为文件夹，则使用时间戳作为文件名
+            # 默认保存为geojson格式的json文件
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            file_name = str(int(time.time() * 1000)) + '.json'
+            save_path = os.path.join(save_path, file_name)
 
-        if save_type == "json":
+        if save_path.endswith(".json"):
             # 保存为geojson格式的json文件
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(save_path, 'w', encoding='utf-8') as f:
                 # 使用json.dump()方法将feature_collection对象写入文件
                 json.dump(json_data, f, ensure_ascii=False, indent=4)
         else:
-            data.to_csv(file_path, index=False)
+            data.to_csv(save_path, index=False)
 
     return json_data
 
@@ -401,37 +401,142 @@ def examine_and_update_raw_data(data):
 
     return available_flag, data, key_msg
 
-
-def cal_traj_info(data):
+def get_noise_info(data, denoising_level='low'):
     """
-    分析轨迹关键信息：轨迹里程、采样间隔、最大缺失段长度、不低于5km的缺失段累计长度及所占比例
+    获取噪点信息
     :param data: 轨迹数据
+    :param denoising_level: 降噪等级
+    :return: 噪点信息、噪点索引
+    """
+    denoising_limit_info = {
+        "low": {"distance_limit": 10000, "time_limit": 3},
+        "mid": {"distance_limit": 8000, "time_limit": 2},
+        "high": {"distance_limit": 5000, "time_limit": 1},
+    }
+    noise_info = {"noise_section_num": 0, "max_noise_section_length": 0, "sum_noise_section_length": 0,
+                  "mean_noise_section_length": 0,
+                  "noise_num": 0, "noise_points": []}
+
+    distance_limit = denoising_limit_info[denoising_level]["distance_limit"]
+    time_limit = denoising_limit_info[denoising_level]["time_limit"]
+
+    coordinates = data[['lng', 'lat']].values
+    # 向量化计算距离
+    distances = cal_haversine_dis_vector(data)
+    # Step1：根据距离阈值确定噪点（初筛），记录轨迹点索引、距离
+    detected_noise_segments = np.where(distances >= distance_limit)[0]
+    segment_dis_list = distances[detected_noise_segments]
+
+
+    if len(detected_noise_segments) <= 1:
+        print("未识别到噪点")
+        return noise_info, []
+
+    # 调整为轨迹点对：列表表达式；广播机制 + 按列堆叠
+    detected_noise_segments = np.column_stack((detected_noise_segments, detected_noise_segments + 1))
+
+    noise_info["noise_section_num"] = len(detected_noise_segments)
+    noise_info["max_noise_section_length"] = round(segment_dis_list.max() / 1000, 3)
+    noise_info["sum_noise_section_length"] = round(segment_dis_list.sum() / 1000, 3)
+    noise_info["mean_noise_section_length"] = round(segment_dis_list.mean() / 1000, 3)
+
+    # Step2：根据相邻的noise_segment，判断要剔除的噪点
+    # 记录要剔除的轨迹点
+    noise_list = []
+    for i in range(len(detected_noise_segments) - 1):
+        left_index = detected_noise_segments[i][0]
+        right_index = detected_noise_segments[i + 1][1]
+        cur_point = coordinates[left_index]
+        next_point = coordinates[right_index]
+        dis = cal_haversine_dis(cur_point, next_point)
+        if segment_dis_list[i] >= time_limit * dis and segment_dis_list[i + 1] >= time_limit * dis:
+            noise_list.extend(list(range(left_index + 1, right_index)))
+
+    noise_info["noise_num"] = len(noise_list)
+    noise_info["noise_points"] = data.iloc[noise_list].to_dict(orient='records')
+
+    return noise_info, noise_list
+
+def get_missing_info(data, missing_segment_lower=10.0, missing_segment_upper=50.0):
+    """
+    获取缺失段信息
+    :param data: 轨迹数据
+    :param missing_segment_lower: 缺失段下限
+    :param missing_segment_upper: 缺失段上限
+    :return: 缺失段信息、缺失段明细
+    """
+    missing_info = {"missing_num": 0, "missing_points": [],
+                    "max_length": 0, "sum_missing_length": 0, "mean_missing_length": 0, "missing_rate": 0}
+
+    # 计算相邻点之间的距离
+    distances = cal_haversine_dis_vector(data)
+
+    # 确定两点间的最大距离
+    max_missing_length = round(max(distances) / 1000, 3)
+    missing_info["max_length"] = max_missing_length
+
+    detected_missing_segments = np.where((distances >= missing_segment_lower * 1000) & (distances <= missing_segment_upper * 1000))[0]
+    segment_dis_list = distances[detected_missing_segments]
+
+
+    if len(detected_missing_segments) == 0:
+        print("未识别到缺失段")
+        return missing_info, []
+
+    # 调整为轨迹点对：列表表达式；广播机制 + 按列堆叠
+    detected_missing_segments = np.column_stack((detected_missing_segments, detected_missing_segments + 1))
+
+    missing_info["missing_num"] = len(detected_missing_segments)
+    missing_info["sum_missing_length"] = round(detected_missing_segments.sum() / 1000, 3)
+    missing_info["mean_missing_length"] = round(detected_missing_segments.mean() / 1000, 3)
+    # 计算轨迹总长度
+    total_length = round(distances.sum() / 1000, 3)
+    missing_info["missing_rate"] = round(missing_info["sum_missing_length"] / total_length, 3)
+
+    missing_segments = []
+    for dis, points in zip(segment_dis_list, detected_missing_segments):
+        missing = data.loc[points, ['lng', 'lat', 'timestamp']].to_dict(orient='records')
+        delta_t = missing[1]['timestamp'] - missing[0]['timestamp']
+
+        # {'start':{'lng','lat','timestamp'}, 'end':{'lng','lat','timestamp'}, 'length', 'interval'}
+        missing_segments.append({'start': missing[0], 'end': missing[1], 'length': dis, 'interval': delta_t})
+    missing_info["missing_points"] = missing_segments
+
+    return missing_info, missing_segments
+
+def get_traj_info(data, noise_flag=False, missing_flag=False):
+    """
+    分析轨迹关键信息：轨迹里程、采样间隔、噪点信息（可选）、缺失段信息（可选）
+    :param data: 轨迹数据
+    :param noise_flag: 是否记录噪点信息
+    :param missing_flag: 是否记录缺失段信息
     :return: 轨迹关键信息
     """
+
     # 计算相邻点之间的距离
     distances = cal_haversine_dis_vector(data)
 
     # 计算轨迹总长度
     total_length = round(distances.sum() / 1000, 3)
-    # 确定两点间的最大距离
-    max_missing_length = round(max(distances) / 1000, 3)
-    # 筛选出距离大于5km的点对，并计算累计长度
-    total_missing_length = round(distances[distances >= 5000].sum() / 1000, 3)
-
-    # 计算缺失段所占比例
-    missing_rate = round(total_missing_length / total_length, 3)
 
     # 计算平均采样间隔：相邻点时间间隔的平均值
     timestamps = data["timestamp"].values
     mean_time_interval = round((timestamps[1:] - timestamps[:-1]).mean() / 1000, 3)
+    traj_info = {"total_mileage": total_length,
+                 "mean_time_interval": mean_time_interval}
+    if noise_flag:
+        noise_info, noise_list = get_noise_info(data)
+        traj_info["noise_info"] = noise_info
+        if len(noise_list) == 0:
+            print("未识别到噪点")
 
-    # 返回轨迹里程、采样间隔、最大缺失段长度、不低于5km的缺失段累计长度及所占比例
-    traj_info = {'total_mileage': total_length,
-                 'mean_time_interval': mean_time_interval,
-                 "max_missing_length": max_missing_length,
-                 "total_missing_length": total_missing_length,
-                 "missing_rate": missing_rate
-                 }
+    if missing_flag:
+        missing_info, missing_segments = get_missing_info(data)
+
+        traj_info["missing_info"] = missing_info
+        if len(missing_segments) == 0:
+            print("未识别到缺失段")
+
     return traj_info
 
 
@@ -441,12 +546,19 @@ if __name__ == '__main__':
     # lat2, lon2 = 39.9042, 116.4074  # 北京
     lat2, lon2 = 31.2304, 121.4737  # 上海
 
-    bearing = cal_bearing(lon1, lat1, lon2, lat2)
-    print(bearing)
+    # bearing = cal_bearing(lon1, lat1, lon2, lat2)
+    # print(bearing)
     # print(f"两点之间的连线与正北方向的夹角为: {bearing:.2f} 度")
 
-    d = cal_haversine_dis([lon1, lat1], [lon2, lat2])
-    print(d)
+    # d = cal_haversine_dis([lon1, lat1], [lon2, lat2])
+    # print(d)
 
-    segment = split_segment([1, 2, 3, 5, 7, 8, 10])
-    print(segment)
+    # segment = split_segment([1, 2, 3, 5, 7, 8, 10])
+    # print(segment)
+
+    path = r'../data/raw_data'
+    file = '孤立噪点.json'
+    with open(os.path.join(path, file), encoding='utf-8') as f:
+        data = json.load(f)
+    data, _ = geojson_to_pd(data)
+    get_traj_info(data, noise_flag=True, missing_flag=True)

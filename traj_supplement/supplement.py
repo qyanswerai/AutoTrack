@@ -7,7 +7,7 @@ from shapely.geometry import Point, LineString
 from pydantic import BaseModel, ValidationError
 from traj_acquisition.traj_acquisition import TrajAcquisition, TrajAcquisitionItem
 from utils.basic_utils import (cal_haversine_dis, cal_bearing,
-                               examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson, geojson_to_pd)
+                               examine_and_update_raw_data, update_pd_data, get_traj_info, pd_to_geojson, geojson_to_pd, get_missing_info)
 
 
 class SupplementItem(BaseModel):
@@ -248,24 +248,9 @@ class Supplement(object):
         轨迹补全核心模块：识别缺失段、确定补全段
         :return:
         """
-        # Step1：识别缺失段
+        # # Step1：识别缺失段
         # 相邻点的距离在指定的缺失段上下限内则进行记录
-        missing_segments = []
-        for i in range(len(self.coordinates) - 1):
-            point_i = self.coordinates[i]
-            point_j = self.coordinates[i + 1]
-            distance = cal_haversine_dis(point_i, point_j)
-            if self.missing_segment_lower * 1000 <= distance <= self.missing_segment_upper * 1000:
-
-                time_i = self.pd_data.loc[i, 'timestamp']
-                time_j = self.pd_data.loc[i + 1, 'timestamp']
-                delta_t = time_j - time_i
-
-                # {'start':{'lng','lat','timestamp'}, 'end':{'lng','lat','timestamp'}, 'length', 'interval'}
-                missing_segments.append({'start': {'lng': point_i[0],'lat': point_i[1], 'timestamp': time_i},
-                                         'end': {'lng': point_j[0],'lat': point_j[1], 'timestamp': time_j},
-                                         'length': distance, 'interval': delta_t})
-
+        missing_info, missing_segments = get_missing_info(self.pd_data, self.missing_segment_lower, self.missing_segment_upper)
         if len(missing_segments) == 0:
             self.logger.info("未识别到缺失段")
             print("未识别到缺失段")
@@ -281,14 +266,14 @@ class Supplement(object):
         supplement_list = self.get_supplement_point_data(missing_segments)
         supplement_data = pd.concat(supplement_list, ignore_index=True)
         # 修改missing_segments中的timestamp类型，避免保存为json文件时报错
-        for missing_segment in missing_segments:
-            missing_segment['start']['timestamp'] = str(missing_segment['start']['timestamp'])
-            missing_segment['end']['timestamp'] = str(missing_segment['end']['timestamp'])
-            missing_segment['interval'] = str(missing_segment['interval'])
-        self.data_info["missing_supplement_info"] = {"missing_segment_num": len(missing_segments),
-                                                     "missing_info": missing_segments,
-                                                     "supplement_mode": self.supplement_mode,
-                                                     "supplement_points_num": len(supplement_data)}
+        # for missing_segment in missing_segments:
+        #     missing_segment['start']['timestamp'] = str(missing_segment['start']['timestamp'])
+        #     missing_segment['end']['timestamp'] = str(missing_segment['end']['timestamp'])
+        #     missing_segment['interval'] = str(missing_segment['interval'])
+
+        self.data_info["missing_info"] = missing_info
+        self.data_info["supplement_info"] = {"supplement_mode": self.supplement_mode,
+                                             "supplement_points_num": len(supplement_data)}
 
         # 拼接补全的轨迹点
         self.pd_data = pd.concat([self.pd_data, supplement_data])
@@ -313,7 +298,7 @@ class Supplement(object):
             self.__read_examine_update_traj()
             self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息
-            traj_info = cal_traj_info(self.pd_data)
+            traj_info = get_traj_info(self.pd_data)
             self.data_info["traj_info"] = traj_info
 
             # 识别缺失段并补全

@@ -6,7 +6,7 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Point, LineString
 from pydantic import BaseModel, ValidationError
 from utils.basic_utils import (cal_haversine_dis, cal_bearing,
-                               examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson, geojson_to_pd)
+                               examine_and_update_raw_data, update_pd_data, get_traj_info, pd_to_geojson, geojson_to_pd)
 
 
 class SimplifyItem(BaseModel):
@@ -260,10 +260,10 @@ class Simplify(object):
             self.__read_examine_update_traj()
             self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息
-            traj_info = cal_traj_info(self.pd_data)
+            traj_info = get_traj_info(self.pd_data)
             self.data_info["traj_info"] = traj_info
 
-            # 识别噪点并剔除
+            # 抽稀
             self.__simplify_core()
             self.logger.info("轨迹抽稀成功")
             if self.save_path != "":

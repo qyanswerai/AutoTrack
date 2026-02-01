@@ -23,8 +23,6 @@ class TrajAcquisitionItem(BaseModel):
     simulate_flag: bool = True
     result_coord_type: str = "wgs84"
     save_path: str = ""
-    save_name: str = ""
-    result_type: str = "csv"
     logger: object = None
 
 
@@ -32,7 +30,7 @@ class TrajAcquisition:
     def __init__(self, origin, destination, way_points="",
                  method_type="amap", coord_type="gcj02", other_params=None, interpolate_flag=False, noise_flag=False,
                  simulate_flag=False, result_coord_type="wgs84",
-                 save_path="", save_name="", result_type="csv", logger=None):
+                 save_path="", logger=None):
         self.raw_origin = origin
         self.raw_destination = destination
         self.raw_way_points = way_points
@@ -48,8 +46,6 @@ class TrajAcquisition:
         self.simulate_flag = simulate_flag
         self.result_coord_type = result_coord_type
         self.save_path = save_path
-        self.save_name = save_name
-        self.result_type = result_type
         self.logger = logger
 
         self.alternative_methods = ["amap", "baidu", "ors"]
@@ -432,7 +428,7 @@ class TrajAcquisition:
                     self.result_data = driving_state_simulate.process()
 
                 # 保存轨迹信息（保存为pd、json文件）
-                json_data = save_data(self.result_data, self.result_info, self.save_path, self.save_name, self.result_type)
+                json_data = save_data(self.result_data, self.result_info, self.save_path)
                 return json_data
             else:
                 return None

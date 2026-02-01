@@ -35,11 +35,11 @@ def traj_acquisition_test():
     save_path = r"data/result_data"
 
     # 起点、终点、中间点的形式符合高德驾车路径规划API的要求
-    # origin = "116.481028,39.989643"
-    # destination = "116.434446,39.90816"
+    origin = "116.481028,39.989643"
+    destination = "116.434446,39.90816"
     # way_points = "116.461028,39.959643;116.441028,39.929643"
-    origin = "121.418634,31.223663"
-    destination = "121.018527,31.098996"
+    # origin = "121.418634,31.223663"
+    # destination = "121.018527,31.098996"
     # way_points = "121.167664,31.147555"
     other_params = {"show_fields": "polyline",
                     "profile": "driving-hgv",
@@ -54,7 +54,6 @@ def traj_acquisition_test():
               "other_params": other_params,
               "logger": logger,
               "save_path": save_path,
-              "result_type": "json",
               "simulate_flag": False
               }
 

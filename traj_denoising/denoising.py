@@ -1,10 +1,8 @@
 import os
 import json
-import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ValidationError
-from utils.basic_utils import (cal_haversine_dis, cal_haversine_dis_vector,
-                               examine_and_update_raw_data, update_pd_data, cal_traj_info, pd_to_geojson, geojson_to_pd)
+from utils.basic_utils import (examine_and_update_raw_data, update_pd_data, get_traj_info, pd_to_geojson, geojson_to_pd, get_noise_info)
 
 
 class DenoisingItem(BaseModel):
@@ -96,43 +94,15 @@ class Denoising(object):
         轨迹降噪核心模块：基于距离确定噪点（两步判断）并剔除
         :return:
         """
-        # 轨迹降噪
-        distance_limit = self.denoising_limit_info[self.denoising_level]["distance_limit"]
-        time_limit = self.denoising_limit_info[self.denoising_level]["time_limit"]
-
-        # 向量化计算距离
-        distance_list = cal_haversine_dis_vector(self.pd_data)
-        # Step1：根据距离阈值确定噪点（初筛），记录轨迹点索引、距离
-        detected_noise_segments = np.where(distance_list >= distance_limit)[0]
-        segment_dis_list = distance_list[detected_noise_segments]
-        # 调整为轨迹点对：列表表达式；广播机制 + 按列堆叠
-        detected_noise_segments = np.column_stack((detected_noise_segments, detected_noise_segments + 1))
-
-        # Step2：根据相邻的noise_segment，判断要剔除的噪点
-        # 记录要剔除的轨迹点
-        noise_list = []
-        for i in range(len(detected_noise_segments) - 1):
-            left_index = detected_noise_segments[i][0]
-            right_index = detected_noise_segments[i + 1][1]
-            cur_point = self.coordinates[left_index]
-            next_point = self.coordinates[right_index]
-            dis = cal_haversine_dis(cur_point, next_point)
-            if (
-                    segment_dis_list[i] >= time_limit * dis
-                    and segment_dis_list[i + 1] >= time_limit * dis
-            ):
-                noise_list.extend(list(range(left_index + 1, right_index)))
-
+        # 获取噪点信息
+        noise_info, noise_list = get_noise_info(self.pd_data, self.denoising_level)
         if len(noise_list) == 0:
             print("未识别到噪点")
             self.logger.info("未识别到噪点")
-            self.data_info["noise_info"] = {"noise_num": len(noise_list)}
             return
         else:
             print(f"识别到{len(noise_list)}个噪点，信息如下：")
             self.logger.info(f"识别到{len(noise_list)}个噪点")
-            self.data_info["noise_info"] = {"noise_num": len(noise_list),
-                                            "noise_points": self.pd_data.iloc[noise_list].to_dict(orient='records')}
 
             for i in sorted(noise_list):
                 print(i, "\t", self.coordinates[i], "\t")
@@ -142,7 +112,7 @@ class Denoising(object):
             self.coordinates = self.coordinates[remained_points]
             self.pd_data = self.pd_data.iloc[remained_points]
             self.pd_data.reset_index(drop=True, inplace=True)
-
+        self.data_info["noise_info"] = noise_info
         self.result_info = pd_to_geojson(self.pd_data, self.data_info)
 
     def process(self):
@@ -155,7 +125,7 @@ class Denoising(object):
             self.__read_examine_update_traj()
             self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息
-            traj_info = cal_traj_info(self.pd_data)
+            traj_info = get_traj_info(self.pd_data)
             self.data_info["traj_info"] = traj_info
 
             # 识别噪点并剔除

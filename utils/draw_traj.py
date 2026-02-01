@@ -7,11 +7,11 @@ from utils.basic_utils import geojson_to_pd
 
 
 class DrawGPS:
-    def __init__(self, path, save_path, file_name, data_type="csv", coord_type="gcj02"):
+    def __init__(self, path, save_path="", coord_type="gcj02"):
+        # 要求path必须包含文件名，可以包含文件路径
+        # 要求save_path可以包含文件名，可以包含文件路径
         self.path = path
         self.save_path = save_path
-        self.file_name = file_name
-        self.data_type = data_type
         self.coord_type = coord_type
 
         self.data = None
@@ -19,13 +19,25 @@ class DrawGPS:
         # 可视化地图的初始化视角位置
         self.view_point = None
 
-        if not os.path.exists(self.save_path):
-            os.makedirs(self.save_path)
+        base_name = os.path.basename(self.path)
+        save_dir_name = os.path.dirname(self.save_path)
+        save_base_name = os.path.basename(self.save_path)
+        if self.save_path.endswith(".html"):
+            # 例如111.html
+            if save_dir_name != "" and not os.path.exists(save_dir_name):
+                os.makedirs(self.save_path)
+
+            self.save_path = os.path.join(save_dir_name, save_base_name)
+        else:
+            # 例如''或者data/result_data
+            if save_dir_name != "" and not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
+            save_base_name = base_name.split(".")[0] + ".html"
+            self.save_path = os.path.join(self.save_path, save_base_name)
 
         # 解析文件，并确定coord_type
-        file_path = os.path.join(self.path, self.file_name + '.' + self.data_type)
-        if "json" == self.data_type:
-            with open(file_path, encoding='utf-8') as f:
+        if self.path.endswith("json"):
+            with open(self.path, encoding='utf-8') as f:
                 self.data = json.load(f)
 
             if "type" in self.data and self.data["type"] == "FeatureCollection":
@@ -40,7 +52,7 @@ class DrawGPS:
                 raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
 
         else:
-            self.data = pd.read_csv(file_path)
+            self.data = pd.read_csv(self.path)
             self.pd_data = self.data.copy(deep=True)
             self.view_point = self.pd_data.iloc[0][['lat', 'lng']].values
 
@@ -64,7 +76,7 @@ class DrawGPS:
         :return:
         """
         # 使用GeoJson直接绘图，不能灵活设置图层、样式（不建议使用）
-        # if "json" == self.data_type:
+        # if self.path.endswith("json"):
         #     folium.GeoJson(self.data, name='gps', color='blue', weight=2.5, opacity=0.8).add_to(self.m)
 
         # 绘制轨迹
@@ -99,15 +111,14 @@ class DrawGPS:
 
         self.m.add_child(measure_control)
         folium.LayerControl().add_to(self.m)
-        self.m.save(os.path.join(self.save_path, self.file_name + '.html'))
+        self.m.save(self.save_path)
 
 
 if __name__ == '__main__':
-    path = '../data/result_data'
-    save_path = '../data/result_data/gps_data'
-    file_name = '1765598740674'
+    path = '../data/result_data/1765724700568.json'
+    save_path = '../data/result_data/gps_data/test.html'
 
-    params = {"path": path, "save_path": save_path, "file_name": file_name, "data_type": "json", "coord_type": "wgs84"}
+    params = {"path": path, "save_path": save_path, "coord_type": "wgs84"}
     # 绘制轨迹
     draw_gps = DrawGPS(**params)
     draw_gps.process()

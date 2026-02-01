@@ -3,24 +3,23 @@
     "meta": {
         "start_point": {
             "lng": 120.201697,
-            "lat": 36.140966,
-            "timestamp": "1732239164000"
+            "lat": 36.140966
         },
         "end_point": {
             "lng": 120.353688,
-            "lat": 36.166415,
-            "timestamp": "1732239854000"
+            "lat": 36.166415
         },
         "start_time": "1732239164000",
         "end_time": "1732239854000",
         "traj_info": {
             "total_mileage": 49.961,
-            "mean_time_interval": 34.5,
-            "max_missing_length": 20.857,
-            "total_missing_length": 38.7,
-            "missing_rate": 0.775
+            "mean_time_interval": 34.5
         },
         "noise_info": {
+            "noise_section_num": 2,
+            "max_noise_section_length": 20.857,
+            "sum_noise_section_length": 38.7,
+            "mean_noise_section_length": 19.35,
             "noise_num": 1,
             "noise_points": [
                 {
@@ -45,15 +44,14 @@
             },
             "properties": {
                 "color": "green",
-                "time": "1732239164000",
                 "point": {
                     "lng": 120.201697,
-                    "lat": 36.140966,
-                    "timestamp": "1732239164000"
+                    "lat": 36.140966
                 },
                 "popup": {
                     "title": "起点"
-                }
+                },
+                "time": "1732239164000"
             }
         },
         {
@@ -67,15 +65,14 @@
             },
             "properties": {
                 "color": "red",
-                "time": "1732239854000",
                 "point": {
                     "lng": 120.353688,
-                    "lat": 36.166415,
-                    "timestamp": "1732239854000"
+                    "lat": 36.166415
                 },
                 "popup": {
                     "title": "终点"
-                }
+                },
+                "time": "1732239854000"
             }
         },
         {
@@ -167,18 +164,16 @@
             },
             "properties": {
                 "color": "green",
-                "start_time": "1732239164000",
-                "end_time": "1732239854000",
                 "start_point": {
                     "lng": 120.201697,
-                    "lat": 36.140966,
-                    "timestamp": "1732239164000"
+                    "lat": 36.140966
                 },
                 "end_point": {
                     "lng": 120.353688,
-                    "lat": 36.166415,
-                    "timestamp": "1732239854000"
+                    "lat": 36.166415
                 },
+                "start_time": "1732239164000",
+                "end_time": "1732239854000",
                 "timestamps": [
                     1732239164000,
                     1732239194000,
