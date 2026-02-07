@@ -1,8 +1,7 @@
 import os
+import json
 from pydantic import ValidationError
 from traj_acquisition.traj_acquisition import TrajAcquisitionItem, TrajAcquisition
-from utils.basic_utils import cal_haversine_dis_vector
-import pandas as pd
 
 from traj_denoising.denoising import Denoising, DenoisingItem
 from traj_simplify.simplify import Simplify, SimplifyItem
@@ -72,23 +71,25 @@ def traj_denoising_test():
     测试轨迹降噪功能
     :return:
     """
-    path = r'data/raw_data'
+    # 【孤立噪点】
+    path = r'data/raw_data/孤立噪点.json'
     save_path = r'data/result_data'
 
-    # 【孤立噪点】
-    file = '孤立噪点.json'
+    # file = 'data/raw_data/孤立噪点.csv'
+    # inputs = {"path": path, "save_path": save_path, "logger": logger}
 
     # 【多个噪点集中分布】
-    # file = '多个噪点集中分布_1.json'
-    # file = '多个噪点集中分布_2.json'
+    # path = r'data/raw_data/多个噪点集中分布_1.json'
+    # path = r'data/raw_data/多个噪点集中分布_2.json'
 
     # 【多个噪点反复横跳】
-    # file = '多个噪点反复横跳.json'
+    # path = r'data/raw_data/多个噪点反复横跳.json'
 
-    inputs = {"data_path": path, "data_name": file, "save_path": save_path, "logger": logger}
+    inputs = {"path": path, "save_path": save_path, "logger": logger}
 
-    # file = '孤立噪点.csv'
-    # inputs = {'data_path': path, 'data_name': file, 'save_path': save_path, 'data_type': 'csv'}
+    # with open(path, encoding='utf-8') as f:
+    #     data = json.load(f)
+    # inputs = {"path": path, "save_path": save_path, "data": data, "logger": logger}
 
     try:
         # 虽然logger不是必需字段，但是为了代码正常执行需要传入
@@ -105,23 +106,15 @@ def traj_simplify_test():
     测试轨迹抽稀功能
     :return:
     """
-    path = r'data/raw_data'
+    # 【孤立噪点】
+    path = r'data/raw_data/孤立噪点.json'
     save_path = r'data/result_data'
 
-    # 【孤立噪点】
-    file = '孤立噪点.json'
+    inputs = {"path": path, "save_path": save_path, 'simplify_mode': "downclocking", "logger": logger}
 
-    # 【多个噪点集中分布】
-    # file = '多个噪点集中分布_1.json'
-    # file = '多个噪点集中分布_2.json'
-
-    # 【多个噪点反复横跳】
-    # file = '多个噪点反复横跳.json'
-
-    inputs = {"data_path": path, "data_name": file, "save_path": save_path, 'simplify_mode': 'rdp', "logger": logger}
-
-    # file = '孤立噪点.csv'
-    # inputs = {'data_path': path, 'data_name': file, 'save_path': save_path, 'data_type': 'csv'}
+    # with open(path, encoding='utf-8') as f:
+    #     data = json.load(f)
+    # inputs = {"path": path, "data": data, "save_path": save_path, 'simplify_mode': "downclocking", "logger": logger}
 
     try:
         # 虽然logger不是必需字段，但是为了代码正常执行需要传入
@@ -138,12 +131,15 @@ def traj_supplement_test():
     测试轨迹补全功能
     :return:
     """
-    path = r'data/raw_data'
+    # 【1个缺失段】
+    path = r'data/raw_data/缺失段.json'
     save_path = r'data/result_data'
 
-    # 【1个缺失段】
-    file = '缺失段.json'
-    inputs = {'data_path': path, "save_path": save_path, 'data_name': file, 'supplement_mode': 'route_plan', "logger": logger}
+    # inputs = {'path': path, "save_path": save_path, 'supplement_mode': 'interpolate', "logger": logger}
+
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+    inputs = {"path": path, "data": data, "save_path": save_path, "supplement_mode": "interpolate", "logger": logger}
 
     try:
         # 虽然logger不是必需字段，但是为了代码正常执行需要传入
@@ -159,14 +155,6 @@ def traj_supplement_test():
 if __name__ == '__main__':
     # 测试轨迹获取功能
     # traj_info = traj_acquisition_test()
-
-    # 计算相邻点的间距
-    # if traj_info is not None:
-    #     traj_data = pd.DataFrame(traj_info['traj_points'])
-    #     distances = cal_haversine_dis_vector(traj_data)
-    #     print(f'相邻点间距最大值为：{distances.max()}；相邻点间距最小值为：{distances.min()}；相邻点间距平均值为：{distances.mean()}')
-        # 相邻点间距最大值为：1233.2510430506204；相邻点间距最小值为：7.651762599165909；相邻点间距平均值为：135.17579430578658
-        # 可以不抽稀，直接生成噪音
 
     # 测试轨迹降噪功能
     # traj_info = traj_denoising_test()
