@@ -1,7 +1,7 @@
 import os
 import json
+import copy
 import numpy as np
-import pandas as pd
 from pyproj import CRS, Transformer
 from shapely.geometry import Point, LineString
 from pydantic import BaseModel, ValidationError
@@ -91,7 +91,7 @@ class Simplify(object):
             if "type" not in self.data and self.data["type"] != "FeatureCollection":
                 raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
 
-        self.result_info = self.data
+        self.result_info = copy.deepcopy(self.data)
         self.data_info = self.data["meta"]
         self.pd_data, self.coordinates = geojson_to_pd(self.data)
 
@@ -260,6 +260,7 @@ class Simplify(object):
         """
         try:
             # 读取轨迹数据并检查
+            self.logger.info("轨迹抽稀开始")
             self.__read_examine_update_traj()
             self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息

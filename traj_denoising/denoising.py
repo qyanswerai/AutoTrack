@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 from pydantic import BaseModel, ValidationError
 from utils.basic_utils import (examine_and_update_raw_data, update_pd_data, get_traj_info, pd_to_geojson, geojson_to_pd,
                                get_noise_info, read_track_data)
@@ -70,7 +71,7 @@ class Denoising(object):
             if "type" not in self.data and self.data["type"] != "FeatureCollection":
                 raise Exception('轨迹数据为json格式时，需要符合geojson的字段标准')
 
-        self.result_info = self.data
+        self.result_info = copy.deepcopy(self.data)
         self.data_info = self.data["meta"]
         self.pd_data, self.coordinates = geojson_to_pd(self.data)
 
@@ -122,6 +123,7 @@ class Denoising(object):
         """
         try:
             # 读取轨迹数据并检查
+            self.logger.info("轨迹降噪开始")
             self.__read_examine_update_traj()
             self.logger.info("轨迹数据检查完毕")
             # 计算轨迹基础信息

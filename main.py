@@ -6,6 +6,7 @@ from traj_acquisition.traj_acquisition import TrajAcquisitionItem, TrajAcquisiti
 from traj_denoising.denoising import Denoising, DenoisingItem
 from traj_simplify.simplify import Simplify, SimplifyItem
 from traj_supplement.supplement import Supplement, SupplementItem
+from traj_preprocess.preprocess import TrajPreprocess, TrajPreprocessItem
 
 import logging
 log_dir = './logs'
@@ -65,6 +66,9 @@ def traj_acquisition_test():
     except ValidationError as e:
         print(e)
         return None
+    except Exception as e:
+        print(e)
+        return None
 
 def traj_denoising_test():
     """
@@ -100,6 +104,9 @@ def traj_denoising_test():
     except ValidationError as e:
         print(e)
         return None
+    except Exception as e:
+        print(e)
+        return None
 
 def traj_simplify_test():
     """
@@ -125,6 +132,9 @@ def traj_simplify_test():
     except ValidationError as e:
         print(e)
         return None
+    except Exception as e:
+        print(e)
+        return None
 
 def traj_supplement_test():
     """
@@ -135,11 +145,11 @@ def traj_supplement_test():
     path = r'data/raw_data/缺失段.json'
     save_path = r'data/result_data'
 
-    # inputs = {'path': path, "save_path": save_path, 'supplement_mode': 'interpolate', "logger": logger}
+    inputs = {'path': path, "save_path": save_path, 'supplement_mode': 'interpolate', "logger": logger}
 
-    with open(path, encoding='utf-8') as f:
-        data = json.load(f)
-    inputs = {"path": path, "data": data, "save_path": save_path, "supplement_mode": "interpolate", "logger": logger}
+    # with open(path, encoding='utf-8') as f:
+    #     data = json.load(f)
+    # inputs = {"path": path, "data": data, "save_path": save_path, "supplement_mode": "interpolate", "logger": logger}
 
     try:
         # 虽然logger不是必需字段，但是为了代码正常执行需要传入
@@ -148,6 +158,39 @@ def traj_supplement_test():
         traj_data = traj_supplement.process()
         return traj_data
     except ValidationError as e:
+        print(e)
+        return None
+    except Exception as e:
+        print(e)
+        return None
+
+def traj_preprocess_test():
+    """
+    测试轨迹预处理功能
+    :return:
+    """
+    # path = r'data/raw_data/孤立噪点.json'
+    path = r'data/raw_data/缺失段.json'
+    save_path = r'data/result_data'
+
+    inputs = {'path': path, "save_path": save_path,
+              'denoising_flag': True, 'simplify_flag': True, 'supplement_flag': True, 'supplement_mode': 'interpolate',
+              "logger": logger}
+
+    # with open(path, encoding='utf-8') as f:
+    #     data = json.load(f)
+    # inputs = {"path": path, "data": data, "save_path": save_path, "supplement_mode": "interpolate", "logger": logger}
+
+    try:
+        # 虽然logger不是必需字段，但是为了代码正常执行需要传入
+        TrajPreprocessItem(**inputs)
+        traj_preprocess = TrajPreprocess(**inputs)
+        traj_data = traj_preprocess.process()
+        return traj_data
+    except ValidationError as e:
+        print(e)
+        return None
+    except Exception as e:
         print(e)
         return None
 
@@ -163,7 +206,10 @@ if __name__ == '__main__':
     # traj_info = traj_simplify_test()
 
     # 测试轨迹补全功能
-    traj_info = traj_supplement_test()
+    # traj_info = traj_supplement_test()
+
+    # 测试轨迹预处理功能
+    traj_info = traj_preprocess_test()
 
     print('finished')
 
